@@ -59,7 +59,7 @@ auth_channel = environ.get('AUTH_CHANNEL', '-1003105162989')
 AUTH_CHANNEL = int(auth_channel) if auth_channel and id_pattern.search(auth_channel) else None
 
 # FIX: Added AUTH_CHANNEL_2 for the dual Fsub system
-auth_channel_2 = environ.get('AUTH_CHANNEL_2', '-1003295790341') # User must set this env var
+auth_channel_2 = environ.get('AUTH_CHANNEL_2', '-1003210900437') # User must set this env var
 AUTH_CHANNEL_2 = int(auth_channel_2) if auth_channel_2 and id_pattern.search(auth_channel_2) else None
 
 SUPPORT_GROUP = int(environ.get('SUPPORT_GROUP', '-1003115990357'))
