@@ -55,11 +55,11 @@ LANGUAGES = ["hindi", "english", "telugu", "tamil", "kannada", "malayalam"]
 # quality search
 QUALITIES = ["4K", "2160p", "1080p", "720p", "480p", "360p"]
 
-auth_channel = environ.get('AUTH_CHANNEL', '-1003105162989')
+auth_channel = environ.get('AUTH_CHANNEL', '-1003093480110')
 AUTH_CHANNEL = int(auth_channel) if auth_channel and id_pattern.search(auth_channel) else None
 
 # FIX: Added AUTH_CHANNEL_2 for the dual Fsub system
-auth_channel_2 = environ.get('AUTH_CHANNEL_2', '-1003210900437') # User must set this env var
+auth_channel_2 = environ.get('AUTH_CHANNEL_2', '-1002921696417') # User must set this env var
 AUTH_CHANNEL_2 = int(auth_channel_2) if auth_channel_2 and id_pattern.search(auth_channel_2) else None
 
 SUPPORT_GROUP = int(environ.get('SUPPORT_GROUP', '-1003115990357'))
