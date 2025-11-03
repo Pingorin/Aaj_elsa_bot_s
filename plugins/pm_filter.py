@@ -45,7 +45,7 @@ async def pm_search(client, message):
     else:
         await message.reply_text("<b>⚠️ ꜱᴏʀʀʏ ɪ ᴄᴀɴ'ᴛ ᴡᴏʀᴋ ɪɴ ᴘᴍ</b>")
     
-@Client.on_message(filters.group & filters.text & filters.incoming)
+@Client.on_message(filters.group & filters.text & filters.incoming & ~filters.command())
 async def group_search(client, message):
     user_id = message.from_user.id if message.from_user else None
     chat_id = message.chat.id
@@ -58,10 +58,8 @@ async def group_search(client, message):
         if 'hindi' in message.text.lower() or 'tamil' in message.text.lower() or 'telugu' in message.text.lower() or 'malayalam' in message.text.lower() or 'kannada' in message.text.lower() or 'english' in message.text.lower() or 'gujarati' in message.text.lower(): 
             return await auto_filter(client, message)
 
-        if message.text.startswith("/"):
-            return
-        
-        elif re.findall(r'https?://\S+|www\.\S+|t\.me/\S+', message.text):
+        if re.findall(r'https?://\S+|www\.\S+|t\.me/\S+', message.text):
+
             if await is_check_admin(client, message.chat.id, message.from_user.id):
                 return
             await message.delete()
