@@ -43,7 +43,8 @@ async def save_file(media):
             file_name=file_name,
             file_size=media.file_size,
             mime_type=media.mime_type,
-            caption=media.caption.html if media.caption else None,
+            # --- FIX: Removed .html to accept plain string captions from Index.py ---
+            caption=media.caption,
             file_type=media.mime_type.split('/')[0]
         )
     except ValidationError:
@@ -172,15 +173,17 @@ async def get_bad_files(query, file_type=None, offset=0, filter=False):
     try:
         regex = re.compile(raw_pattern, flags=re.IGNORECASE)
     except:
-        return []
+        # --- FIX: Return signature must match (cursor, int) ---
+        return None, 0
     filter = {'file_name': regex}
     if file_type:
         filter['file_type'] = file_type
     total_results = await Media.count_documents(filter)
     cursor = Media.find(filter)
     cursor.sort('$natural', -1)
-    files = await cursor.to_list(length=total_results)
-    return files, total_results
+    
+    # --- FIX: Return the cursor directly instead of loading all files into memory ---
+    return cursor, total_results
     
 async def get_file_details(query):
     filter = {'file_id': query}
