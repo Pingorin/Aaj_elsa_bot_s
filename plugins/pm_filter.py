@@ -45,7 +45,7 @@ async def pm_search(client, message):
     else:
         await message.reply_text("<b>⚠️ ꜱᴏʀʀʏ ɪ ᴄᴀɴ'ᴛ ᴡᴏʀᴋ ɪɴ ᴘᴍ</b>")
     
-@Client.on_message(filters.group & filters.text & filters.incoming & ~filters.command())
+@Client.on_message(filters.group & filters.text & filters.incoming & ~filters.command)
 async def group_search(client, message):
     user_id = message.from_user.id if message.from_user else None
     chat_id = message.chat.id
