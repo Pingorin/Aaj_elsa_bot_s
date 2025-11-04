@@ -55,6 +55,8 @@ async def send_for_index(bot, message):
         return await message.reply(f'Errors - {e}')
     if chat.type != enums.ChatType.CHANNEL:
         return await message.reply("I can index only channels.")
+    
+    # --- UI IMPROVEMENT: Added clearer prompt text ---
     s = await message.reply("Send skip message number. (This is the *first* message ID to start from)")
     msg = await bot.listen(chat_id=message.chat.id, user_id=message.from_user.id)
     await s.delete()
@@ -68,6 +70,8 @@ async def send_for_index(bot, message):
         InlineKeyboardButton('CLOSE', callback_data='close_data'),
     ]]
     reply_markup = InlineKeyboardMarkup(buttons)
+    
+    # --- UI IMPROVEMENT: Clarified the confirmation message ---
     await message.reply(f'Do you want to index {chat.title} channel?\n\nStart ID: <code>{skip}</code>\nEnd ID: <code>{last_msg_id}</code>', reply_markup=reply_markup)
 
 @Client.on_message(filters.command('channel'))
@@ -94,17 +98,16 @@ async def index_files_to_db(lst_msg_id, chat, msg, bot, skip):
     no_media = 0
     unsupported = 0
     
-    # --- FIX 1: New counter logic ---
     processed_count = 0 
     current_msg_id = skip # For error logging
     
     async with lock:
         try:
-            # --- FIX 2: Correct iter_messages call (start at 'skip', go forward) ---
+            # Correct iter_messages call (start at 'skip', go forward)
             async for message in bot.iter_messages(chat, offset_id=skip, reverse=True):
                 current_msg_id = message.id # Track current ID
                 
-                # --- FIX 3: Add break condition to stop at the last message ID ---
+                # Add break condition to stop at the last message ID
                 if current_msg_id > lst_msg_id:
                     break
                     
@@ -114,13 +117,11 @@ async def index_files_to_db(lst_msg_id, chat, msg, bot, skip):
                     await msg.edit(f"Successfully Cancelled!\nCompleted in {time_taken}\n\nSaved <code>{total_files}</code> files to Database!\nDuplicate Files Skipped: <code>{duplicate}</code>\nDeleted Messages Skipped: <code>{deleted}</code>\nNon-Media messages skipped: <code>{no_media + unsupported}</code>\nUnsupported Media: <code>{unsupported}</code>\nErrors Occurred: <code>{errors}</code>")
                     return
                 
-                # --- FIX 4: Use 'processed_count' ---
                 processed_count += 1 
                 if processed_count % 30 == 0: # Use the correct counter
                     btn = [[
                         InlineKeyboardButton('CANCEL', callback_data=f'index#cancel#{chat}#{lst_msg_id}#{skip}')
                     ]]
-                    # --- FIX 5: Update status message to be more informative ---
                     await msg.edit_text(
                         text=f"Indexing Message ID: <code>{current_msg_id}</code>\n"
                              f"Total messages processed: <code>{processed_count}</code>\n"
@@ -129,7 +130,7 @@ async def index_files_to_db(lst_msg_id, chat, msg, bot, skip):
                              f"Deleted Messages Skipped: <code>{deleted}</code>\n"
                              f"Non-Media messages skipped: <code>{no_media + unsupported}</code>\n"
                              f"Unsupported Media: <code>{unsupported}</code>\n"
-                             f"Errors Occurred: <code>{errors}</code>", 
+                             f"Errors Occurred: D<code>{errors}</code>", 
                         reply_markup=InlineKeyboardMarkup(btn)
                     )
                     
@@ -139,7 +140,6 @@ async def index_files_to_db(lst_msg_id, chat, msg, bot, skip):
                 elif not message.media:
                     no_media += 1
                     continue
-                # --- FIX 7: Corrected media type check ---
                 elif message.media not in [enums.MessageMediaType.VIDEO, enums.MessageMediaType.DOCUMENT]:
                     unsupported += 1
                     continue
@@ -163,7 +163,6 @@ async def index_files_to_db(lst_msg_id, chat, msg, bot, skip):
                 elif sts == 'err':
                     errors += 1
         except Exception as e:
-            # --- FIX 6: Add current_msg_id to error message for debugging ---
             await msg.reply(f'Index canceled due to Error - {e}\n\nLast Message ID processed: {current_msg_id}')
         else:
             time_taken = get_readable_time(time.time()-start_time)
