@@ -38,6 +38,11 @@ CAP = {}
 
 @Client.on_message(filters.private & filters.text & filters.incoming)
 async def pm_search(client, message):
+    # --- FIX: Ignore commands (like /index) so they are processed by other handlers ---
+    if message.text.startswith("/"):
+        return
+    # --- END FIX ---
+        
     if IS_PM_SEARCH:
         if 'hindi' in message.text.lower() or 'tamil' in message.text.lower() or 'telugu' in message.text.lower() or 'malayalam' in message.text.lower() or 'kannada' in message.text.lower() or 'english' in message.text.lower() or 'gujarati' in message.text.lower(): 
             return await auto_filter(client, message)
@@ -198,10 +203,9 @@ async def next_page(bot, query):
                 InlineKeyboardButton("ɴᴇxᴛ ⪼", callback_data=f"next_{req}_{key}_{n_offset}")
             ],
         )
+        
+    # --- FIX: Removed redundant code block that reset 'links' ---
     if settings["link"]:
-        links = ""
-        for file_num, file in enumerate(files, start=offset+1):
-            links += f"""<b>\n\n{file_num}. <a href=https://t.me/{temp.U_NAME}?start=file_{query.message.chat.id}_{file.file_id}>[{get_size(file.file_size)}] {' '.join(filter(lambda x: not x.startswith('[') and not x.startswith('@') and not x.startswith('www.'), file.file_name.split()))}</a></b>"""
         await query.message.edit_text(cap + links + del_msg, disable_web_page_preview=True, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(btn))
         return        
     try:
@@ -777,12 +781,19 @@ async def cb_handler(client: Client, query: CallbackQuery):
     elif query.data.startswith("killfilesak"):
         ident, keyword = query.data.split("#")
         await query.message.edit_text(f"<b>ꜰᴇᴛᴄʜɪɴɢ ꜰɪʟᴇs ꜰᴏʀ ʏᴏᴜʀ ǫᴜᴇʀʏ {keyword} ᴏɴ ᴅʙ...\n\nᴘʟᴇᴀsᴇ ᴡᴀɪᴛ...</b>")
-        files, total = await get_bad_files(keyword)
+        
+        # --- FIX: 'files' is now a cursor, not a list. Handle cursor iteration. ---
+        files_cursor, total = await get_bad_files(keyword)
+        if total == 0:
+            await query.message.edit_text(f"<b>No files found for your query {keyword}.</b>")
+            return
+            
         await query.message.edit_text(f"<b>ꜰᴏᴜɴᴅ {total} ꜰɪʟᴇs ꜰᴏʀ ʏᴏᴜʀ ǫᴜᴇʀʏ {keyword}!!</b>")
         deleted = 0
         async with lock:
             try:
-                for file in files:
+                # --- FIX: Iterate over the async cursor ---
+                async for file in files_cursor:
                     file_ids = file.file_id
                     file_name = file.file_name
                     result = await Media.collection.delete_one({
@@ -798,6 +809,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 await query.message.edit_text(f'Error: {e}')
             else:
                 await query.message.edit_text(f"<b>Process Completed for file deletion !\n\nSuccessfully deleted {str(deleted)} files from database for your query {keyword}.</b>")
+        # --- END FIX ---
           
     elif query.data.startswith("reset_grp_data"):
         grp_id = query.message.chat.id
