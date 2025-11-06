@@ -343,6 +343,6 @@ def get_readable_time(seconds):
     result = ''
     for period_name, period_seconds in periods:
         if seconds >= period_seconds:
-            period_value, seconds = div_mod(seconds, period_seconds)
+            period_value, seconds = divmod(seconds, period_seconds)
             result += f'{int(period_value)}{period_name}'
     return result
