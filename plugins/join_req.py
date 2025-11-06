@@ -24,7 +24,7 @@ async def handle_join_request(client: Client, message: ChatJoinRequest):
         logger.error(f"Join request handle karte waqt error: {e}")
 
 
-# Component 2: Database Cleanup (FIXED)
+# Component 2: Database Cleanup (YAHAN FIX KIYA GAYA HAI)
 @Client.on_chat_member_updated(filters.chat(AUTH_CHANNEL))
 async def handle_status_change(client: Client, member: ChatMemberUpdated):
     """
