@@ -25,7 +25,7 @@ from utils import (
 import re
 import json
 import base64
-import aiohttp  # <-- FIX: Added for non-blocking requests
+import aiohttp  # Added for non-blocking requests
 from html import escape 
 
 logger = logging.getLogger(__name__)
@@ -804,8 +804,27 @@ async def set_time(client, message):
     await save_group_settings(grp_id, 'verify_time', time)
     await message.reply_text(f"Successfully set 1st verify time for {title}\n\nTime is - <code>{time}</code>")
 
+# --- FIX: REPLACED 'welcome_handler' WITH THE NEW COMBINED HANDLER ---
 @Client.on_chat_member_updated()
-async def welcome_handler(client: Client, member: ChatMemberUpdated):
+async def combined_chat_member_handler(client: Client, member: ChatMemberUpdated):
+    
+    # --- Logic 1: FSUB Cleanup (from Join_req.py) ---
+    try:
+        # Check if the update is for the AUTH_CHANNEL
+        if str(member.chat.id) == str(AUTH_CHANNEL): 
+            if member.new_chat_member and member.new_chat_member.user:
+                user_id = member.new_chat_member.user.id
+                channel_id = member.chat.id
+                
+                # Check if the user was in the pending list
+                if await db.is_request_pending(user_id, channel_id):
+                    await db.remove_pending_request(user_id, channel_id)
+                    logger.info(f"[ADV-FSUB] User {user_id} removed from pending list (Status change).")
+    except Exception as e:
+        logger.error(f"Error in FSUB Cleanup logic: {e}")
+        # Do not return, let the referral logic run
+    
+    # --- Logic 2: Referral Handler (from old welcome_handler) ---
     try:
         if (
             member.invite_link
@@ -820,12 +839,12 @@ async def welcome_handler(client: Client, member: ChatMemberUpdated):
             referrer = await db.get_user_by_referral_link(invite_link_str)
             
             if not referrer:
-                return
+                return  # This was a normal invite link, not a referral one
 
             referrer_id = referrer['referrer_id']
             
             if new_user_id == referrer_id:
-                return 
+                return # Self-referral
                 
             await db.log_referral(new_user_id, referrer_id, chat_id)
             await db.increment_referral_count(referrer_id)
@@ -842,15 +861,13 @@ async def welcome_handler(client: Client, member: ChatMemberUpdated):
                     referrer_mention = f"<a href='tg://user?id={referrer_id}'>{referrer_name}</a>"
                 else:
                     referrer_mention = f"<a href='tg://user?id={referrer_id}'>Referrer</a>"
-
+            
             if new_count >= REFERRAL_TARGET:
                 expiry_time = datetime.now() + timedelta(days=PREMIUM_MONTH_DURATION)
-                
                 await db.update_notcopy_user(
                     referrer_id,
                     {"expiry_time": expiry_time, "referral_count": 0}
                 )
-                
                 try:
                     await client.send_message(
                         chat_id=referrer_id,
@@ -867,4 +884,4 @@ async def welcome_handler(client: Client, member: ChatMemberUpdated):
                 except (UserIsBlocked, PeerIdInvalid):
                     pass
     except Exception as e:
-        logger.error(f"Error in welcome_handler: {e}")
+        logger.error(f"Error in Referral (welcome_handler) logic: {e}")
