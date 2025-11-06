@@ -1,4 +1,4 @@
-import logging
+import logging  # <-- FIX: Logger import add kiya hai
 from pyrogram.errors import InputUserDeactivated, UserNotParticipant, FloodWait, UserIsBlocked, PeerIdInvalid
 from info import AUTH_CHANNEL, LONG_IMDB_DESCRIPTION, IS_VERIFY
 from imdb import Cinemagoer
@@ -18,7 +18,7 @@ from database.users_chats_db import db
 # Removed unused 'requests'
 # Removed unused 'aiohttp'
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__) # <-- FIX: Logger ko initialize kiya hai
 logger.setLevel(logging.INFO)
 
 # Removed unused 'BANNED' variable
@@ -37,9 +37,7 @@ class temp(object):
     GROUPS_CANCEL = False    
     CHAT = {}
 
-# --- FIX: Removed old 'is_req_subscribed' function ---
-
-# --- ADVANCED FSUB (COMPONENT 3) START ---
+# --- ADVANCED FSUB (COMPONENT 3) (FIXED) ---
 
 async def get_fsub_status(client, user_id):
     """
@@ -51,6 +49,7 @@ async def get_fsub_status(client, user_id):
     """
     try:
         member = await client.get_chat_member(AUTH_CHANNEL, user_id)
+        
         # Case 1: User Channel Mein Hai
         if member.status in [
             enums.ChatMemberStatus.MEMBER,
@@ -58,20 +57,39 @@ async def get_fsub_status(client, user_id):
             enums.ChatMemberStatus.OWNER
         ]:
             return "MEMBER"
-        
-        # User kisi aur state mein hai (left, banned, etc.)
-        # Ab pending check karein
-        
+            
+        # --- YEH HAI ASLI FIX ---
+        # Case 1.5: User ko dismiss kar diya (LEFT) ya BANNED hai
+        # Agar get_chat_member() success hota hai par user member nahi hai,
+        # toh use NOT_JOINED maana jaaye.
+        if member.status in [
+            enums.ChatMemberStatus.BANNED,
+            enums.ChatMemberStatus.LEFT
+        ]:
+            logger.info(f"User {user_id} ka status {member.status} hai. NOT_JOINED maana gaya.")
+            
+            # Self-healing: Agar user LEFT/BANNED hai par 'pending' list mein hai, toh use hata do.
+            try:
+                auth_channel_id = int(AUTH_CHANNEL)
+                if await db.is_request_pending(user_id, auth_channel_id):
+                    await db.remove_pending_request(user_id, auth_channel_id)
+                    logger.info(f"[SELF-HEAL] User {user_id} LEFT/BANNED tha par pending mein tha. Ab remove kar diya.")
+            except Exception as e:
+                logger.error(f"Self-heal cleanup error: {e}")
+                
+            return "NOT_JOINED"
+        # --- FIX ENDS ---
+
     except UserNotParticipant:
-        # User channel mein nahi hai. Ab 'pending' DB check karein.
+        # User channel mein kabhi nahi tha. Ab 'pending' DB check karein.
+        logger.info(f"User {user_id} 'UserNotParticipant' hai. Pending DB check hoga.")
         pass
     except Exception as e:
-        # Koi aur error, maan lo ki joined nahi hai
-        logger.error(f"get_fsub_status: get_chat_member error: {e}")
-        pass
+        # Koi aur error, jaise "PeerIdInvalid" (user ne account delete kar diya)
+        logger.error(f"get_fsub_status mein get_chat_member error: {e}")
+        pass # Neeche jaakar pending list check karein
 
-    # Case 2: User Ne Join Request Bhej Di Hai (Pending)
-    # Make sure AUTH_CHANNEL is an integer for the DB check
+    # Case 2: User 'pending' list mein hai
     try:
         auth_channel_id = int(AUTH_CHANNEL)
     except ValueError:
@@ -79,9 +97,11 @@ async def get_fsub_status(client, user_id):
         return "NOT_JOINED" # Error hai toh aage mat badhne do
 
     if await db.is_request_pending(user_id, auth_channel_id):
+        logger.info(f"User {user_id} pending list mein mila. 'PENDING' return kiya.")
         return "PENDING"
 
-    # Case 3: User Ne Kuch Nahi Kiya (Na Member, Na Pending)
+    # Case 3: User na member hai, na pending
+    logger.info(f"User {user_id} na member hai na pending. 'NOT_JOINED' return kiya.")
     return "NOT_JOINED"
 
 # --- ADVANCED FSUB (COMPONENT 3) END ---
@@ -251,7 +271,7 @@ async def get_shortlink(link, grp_id, is_second_shortener=False):
             link = await shortzy.get_quick_link(link)    
     return link
 
-def get_file_id(message: "Message") -> Message: # Fixed return type hint
+def get_file_id(message: "Message") -> Message:
     media_types = (
         "audio",
         "document",
@@ -268,17 +288,17 @@ def get_file_id(message: "Message") -> Message: # Fixed return type hint
             if media:
                 setattr(media, "message_type", attr)
                 return media
-    return None # Added a return path if no media is found
+    return None
 
 def get_hash(media_msg: Message) -> str:
     media = get_file_id(media_msg)
     if media:
         return getattr(media, "file_unique_id", "")[:6]
-    return "" # Added a return path if no media is found
+    return ""
 
 def get_status():
     tz = pytz.timezone('Asia/Colombo')
-    hour = datetime.now(tz).time().hour # <-- Error theek kar diya
+    hour = datetime.now(tz).time().hour
     if 5 <= hour < 12:
         sts = "ɢᴏᴏᴅ ᴍᴏʀɴɪɴɢ"
     elif 12 <= hour < 18:
