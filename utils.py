@@ -36,9 +36,9 @@ async def get_fsub_status(client, user_id):
     """
     User ka advanced FSub status check karein.
     Returns:
-        "MEMBER" - User channel mein hai.
-        "PENDING" - User ne request bhej di hai.
-        "NOT_JOINED" - User ne kuch nahi kiya.
+        "MEMBER" - User channel mein hai (File Do).
+        "PENDING" - User ne request bhej di hai (File Do).
+        "NOT_JOINED" - User ne kuch nahi kiya (File Mat Do).
     """
     try:
         auth_channel_id = int(AUTH_CHANNEL)
@@ -61,7 +61,8 @@ async def get_fsub_status(client, user_id):
                 await db.remove_pending_request(user_id, auth_channel_id)
             return "MEMBER" # (File do)
 
-        # Case 2: User is PENDING
+        # --- YEH HAI AAPKA MAIN LOGIC ---
+        # Case 2: User is PENDING (RESTRICTED)
         # Jab user request bhejta hai, uska status 'RESTRICTED' ho jaata hai jab tak admin approve na kare.
         if member.status == enums.ChatMemberStatus.RESTRICTED:
             # User pending hai.
@@ -70,8 +71,9 @@ async def get_fsub_status(client, user_id):
                 logger.info(f"[SELF-HEAL] User {user_id} RESTRICTED hai. Pending list mein add kar raha hoon.")
                 await db.add_pending_request(user_id, auth_channel_id)
             return "PENDING" # (File do)
+        # --- LOGIC ENDS ---
 
-        # Case 3: User is LEFT or BANNED
+        # Case 3: User is LEFT or BANNED (File Mat Do)
         if member.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED]:
             # User ne leave kar diya hai ya banned hai.
             # Self-healing: Agar woh pending list mein tha, toh hata do.
@@ -82,7 +84,6 @@ async def get_fsub_status(client, user_id):
 
     # Case 4: UserNotParticipant (Admin ne Dismiss kiya YA user ne kabhi interact nahi kiya)
     except UserNotParticipant:
-        # YEH SABSE ZAROORI FIX HAI
         # Iska matlab user pending list mein tha, lekin ab channel mein nahi hai
         # (yaani admin ne DISMISS kar diya)
         if await db.is_request_pending(user_id, auth_channel_id):
@@ -344,7 +345,6 @@ def get_readable_time(seconds):
     result = ''
     for period_name, period_seconds in periods:
         if seconds >= period_seconds:
-            # --- FIX: 'div_mod' ko 'divmod' kiya ---
             period_value, seconds = divmod(seconds, period_seconds)
             result += f'{int(period_value)}{period_name}'
     return result
