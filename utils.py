@@ -1,27 +1,20 @@
-import logging  # <-- FIX: Logger import add kiya hai
+import logging
 from pyrogram.errors import InputUserDeactivated, UserNotParticipant, FloodWait, UserIsBlocked, PeerIdInvalid
 from info import AUTH_CHANNEL, LONG_IMDB_DESCRIPTION, IS_VERIFY
 from imdb import Cinemagoer
 import asyncio
-# Removed redundant 'import shortzy'
 from pyrogram.types import Message, InlineKeyboardButton
 from pyrogram import enums
 import pytz
-# Removed unused 'import time'
 import re
 import os 
 from shortzy import Shortzy
 from datetime import datetime, timedelta
-# Removed unused 'timezone'
-# Removed unused 'Any'
 from database.users_chats_db import db
-# Removed unused 'requests'
-# Removed unused 'aiohttp'
 
-logger = logging.getLogger(__name__) # <-- FIX: Logger ko initialize kiya hai
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Removed unused 'BANNED' variable
 imdb = Cinemagoer() 
  
 class temp(object):
@@ -37,7 +30,7 @@ class temp(object):
     GROUPS_CANCEL = False    
     CHAT = {}
 
-# --- ADVANCED FSUB (COMPONENT 3) (FIXED) ---
+# --- ADVANCED FSUB (COMPONENT 3) (YAHAN FIX KIYA GAYA HAI) ---
 
 async def get_fsub_status(client, user_id):
     """
@@ -48,60 +41,63 @@ async def get_fsub_status(client, user_id):
         "NOT_JOINED" - User ne kuch nahi kiya.
     """
     try:
-        member = await client.get_chat_member(AUTH_CHANNEL, user_id)
-        
-        # Case 1: User Channel Mein Hai
-        if member.status in [
-            enums.ChatMemberStatus.MEMBER,
-            enums.ChatMemberStatus.ADMINISTRATOR,
-            enums.ChatMemberStatus.OWNER
-        ]:
-            return "MEMBER"
-            
-        # --- YEH HAI ASLI FIX ---
-        # Case 1.5: User ko dismiss kar diya (LEFT) ya BANNED hai
-        # Agar get_chat_member() success hota hai par user member nahi hai,
-        # toh use NOT_JOINED maana jaaye.
-        if member.status in [
-            enums.ChatMemberStatus.BANNED,
-            enums.ChatMemberStatus.LEFT
-        ]:
-            logger.info(f"User {user_id} ka status {member.status} hai. NOT_JOINED maana gaya.")
-            
-            # Self-healing: Agar user LEFT/BANNED hai par 'pending' list mein hai, toh use hata do.
-            try:
-                auth_channel_id = int(AUTH_CHANNEL)
-                if await db.is_request_pending(user_id, auth_channel_id):
-                    await db.remove_pending_request(user_id, auth_channel_id)
-                    logger.info(f"[SELF-HEAL] User {user_id} LEFT/BANNED tha par pending mein tha. Ab remove kar diya.")
-            except Exception as e:
-                logger.error(f"Self-heal cleanup error: {e}")
-                
-            return "NOT_JOINED"
-        # --- FIX ENDS ---
-
-    except UserNotParticipant:
-        # User channel mein kabhi nahi tha. Ab 'pending' DB check karein.
-        logger.info(f"User {user_id} 'UserNotParticipant' hai. Pending DB check hoga.")
-        pass
-    except Exception as e:
-        # Koi aur error, jaise "PeerIdInvalid" (user ne account delete kar diya)
-        logger.error(f"get_fsub_status mein get_chat_member error: {e}")
-        pass # Neeche jaakar pending list check karein
-
-    # Case 2: User 'pending' list mein hai
-    try:
         auth_channel_id = int(AUTH_CHANNEL)
     except ValueError:
         logger.error("AUTH_CHANNEL 'info.py' mein set nahi hai ya invalid hai.")
         return "NOT_JOINED" # Error hai toh aage mat badhne do
 
-    if await db.is_request_pending(user_id, auth_channel_id):
-        logger.info(f"User {user_id} pending list mein mila. 'PENDING' return kiya.")
-        return "PENDING"
+    try:
+        member = await client.get_chat_member(auth_channel_id, user_id)
 
-    # Case 3: User na member hai, na pending
-    logger.info(f"User {user_id} na member hai na pending. 'NOT_JOINED' return kiya.")
+        # Case 1: User channel mein hai (Approved)
+        if member.status in [
+            enums.ChatMemberStatus.MEMBER,
+            enums.ChatMemberStatus.ADMINISTRATOR,
+            enums.ChatMemberStatus.OWNER
+        ]:
+            # Self-healing: Agar user member ban gaya hai, toh pending list se hata do
+            if await db.is_request_pending(user_id, auth_channel_id):
+                logger.info(f"[SELF-HEAL] User {user_id} member hai par pending mein tha. Remove kar raha hoon.")
+                await db.remove_pending_request(user_id, auth_channel_id)
+            return "MEMBER"
+
+        # Case 2: User Banned hai
+        if member.status == enums.ChatMemberStatus.BANNED:
+            # Self-healing: Agar banned hai, toh pending list se hata do
+            if await db.is_request_pending(user_id, auth_channel_id):
+                logger.info(f"[SELF-HEAL] User {user_id} BANNED hai. Pending list se remove kar raha hoon.")
+                await db.remove_pending_request(user_id, auth_channel_id)
+            return "NOT_JOINED"
+
+        # Case 3: User LEFT ya RESTRICTED hai
+        # Iska matlab ho sakta hai:
+        # A) Request abhi bhi pending hai
+        # B) User ne join karke leave kar diya
+        if member.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.RESTRICTED]:
+            if await db.is_request_pending(user_id, auth_channel_id):
+                # (A) Request abhi bhi pending hai (Admin ne abhi tak approve/dismiss nahi kiya)
+                return "PENDING"
+            else:
+                # (B) User ne join karke leave kar diya
+                return "NOT_JOINED"
+
+    # Case 4: UserNotParticipant (Admin ne Dismiss kiya YA user ne kabhi interact nahi kiya)
+    except UserNotParticipant:
+        # YEH SABSE ZAROORI FIX HAI
+        if await db.is_request_pending(user_id, auth_channel_id):
+            # Iska matlab user pending list mein tha, lekin ab channel mein nahi hai
+            # (yaani admin ne DISMISS kar diya)
+            logger.info(f"[SELF-HEAL] User {user_id} UserNotParticipant hai (Dismissed?). Pending list se remove kar raha hoon.")
+            await db.remove_pending_request(user_id, auth_channel_id)
+        
+        # Donon hi case mein (Dismissed ya Never Joined), result "NOT_JOINED" hai
+        return "NOT_JOINED"
+    
+    except Exception as e:
+        logger.error(f"get_fsub_status mein error: {e}")
+        return "NOT_JOINED" # Failsafe
+
+    # Fallback (agar koi aur status aaye)
     return "NOT_JOINED"
 
 # --- ADVANCED FSUB (COMPONENT 3) END ---
@@ -271,7 +267,7 @@ async def get_shortlink(link, grp_id, is_second_shortener=False):
             link = await shortzy.get_quick_link(link)    
     return link
 
-def get_file_id(message: "Message") -> Message:
+def get_file_id(message: "Message"):
     media_types = (
         "audio",
         "document",
@@ -347,6 +343,6 @@ def get_readable_time(seconds):
     result = ''
     for period_name, period_seconds in periods:
         if seconds >= period_seconds:
-            period_value, seconds = divmod(seconds, period_seconds)
+            period_value, seconds = div_mod(seconds, period_seconds)
             result += f'{int(period_value)}{period_name}'
     return result
