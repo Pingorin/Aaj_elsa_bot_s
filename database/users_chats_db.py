@@ -199,7 +199,7 @@ class Database:
         except Exception:
             user = await self.get_notcopy_user(user_id)
             pastDate = user["last_verified"]
-        ist_timezone = pytz.timezone('Asia/KKolkata')
+        ist_timezone = pytz.timezone('Asia/Kolkata')
         pastDate = pastDate.astimezone(ist_timezone)
         current_time = datetime.datetime.now(tz=ist_timezone)
         seconds_since_midnight = (current_time - datetime.datetime(current_time.year, current_time.month, current_time.day, 0, 0, 0, tzinfo=ist_timezone)).total_seconds()
