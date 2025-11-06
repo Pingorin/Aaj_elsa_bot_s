@@ -59,45 +59,46 @@ async def get_fsub_status(client, user_id):
             if await db.is_request_pending(user_id, auth_channel_id):
                 logger.info(f"[SELF-HEAL] User {user_id} member hai par pending mein tha. Remove kar raha hoon.")
                 await db.remove_pending_request(user_id, auth_channel_id)
-            return "MEMBER"
+            return "MEMBER" # (File do)
 
-        # Case 2: User Banned hai
-        if member.status == enums.ChatMemberStatus.BANNED:
-            # Self-healing: Agar banned hai, toh pending list se hata do
+        # Case 2: User is PENDING
+        # Jab user request bhejta hai, uska status 'RESTRICTED' ho jaata hai jab tak admin approve na kare.
+        if member.status == enums.ChatMemberStatus.RESTRICTED:
+            # User pending hai.
+            # Self-healing: Agar woh pending list mein nahi hai, toh add kar do.
+            if not await db.is_request_pending(user_id, auth_channel_id):
+                logger.info(f"[SELF-HEAL] User {user_id} RESTRICTED hai. Pending list mein add kar raha hoon.")
+                await db.add_pending_request(user_id, auth_channel_id)
+            return "PENDING" # (File do)
+
+        # Case 3: User is LEFT or BANNED
+        if member.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED]:
+            # User ne leave kar diya hai ya banned hai.
+            # Self-healing: Agar woh pending list mein tha, toh hata do.
             if await db.is_request_pending(user_id, auth_channel_id):
-                logger.info(f"[SELF-HEAL] User {user_id} BANNED hai. Pending list se remove kar raha hoon.")
+                logger.info(f"[SELF-HEAL] User {user_id} LEFT/BANNED hai. Pending list se remove kar raha hoon.")
                 await db.remove_pending_request(user_id, auth_channel_id)
-            return "NOT_JOINED"
-
-        # Case 3: User LEFT ya RESTRICTED hai
-        # Iska matlab ho sakta hai:
-        # A) Request abhi bhi pending hai
-        # B) User ne join karke leave kar diya
-        if member.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.RESTRICTED]:
-            if await db.is_request_pending(user_id, auth_channel_id):
-                # (A) Request abhi bhi pending hai (Admin ne abhi tak approve/dismiss nahi kiya)
-                return "PENDING"
-            else:
-                # (B) User ne join karke leave kar diya
-                return "NOT_JOINED"
+            return "NOT_JOINED" # (File mat do)
 
     # Case 4: UserNotParticipant (Admin ne Dismiss kiya YA user ne kabhi interact nahi kiya)
     except UserNotParticipant:
         # YEH SABSE ZAROORI FIX HAI
+        # Iska matlab user pending list mein tha, lekin ab channel mein nahi hai
+        # (yaani admin ne DISMISS kar diya)
         if await db.is_request_pending(user_id, auth_channel_id):
-            # Iska matlab user pending list mein tha, lekin ab channel mein nahi hai
-            # (yaani admin ne DISMISS kar diya)
             logger.info(f"[SELF-HEAL] User {user_id} UserNotParticipant hai (Dismissed?). Pending list se remove kar raha hoon.")
             await db.remove_pending_request(user_id, auth_channel_id)
         
         # Donon hi case mein (Dismissed ya Never Joined), result "NOT_JOINED" hai
-        return "NOT_JOINED"
+        return "NOT_JOINED" # (File mat do)
     
+    # Case 5: Any other error
     except Exception as e:
         logger.error(f"get_fsub_status mein error: {e}")
-        return "NOT_JOINED" # Failsafe
+        return "NOT_JOINED" # Failsafe (File mat do)
 
     # Fallback (agar koi aur status aaye)
+    logger.warning(f"get_fsub_status mein Fallback. User: {user_id}, Status: {member.status}")
     return "NOT_JOINED"
 
 # --- ADVANCED FSUB (COMPONENT 3) END ---
@@ -343,6 +344,7 @@ def get_readable_time(seconds):
     result = ''
     for period_name, period_seconds in periods:
         if seconds >= period_seconds:
+            # --- FIX: 'div_mod' ko 'divmod' kiya ---
             period_value, seconds = divmod(seconds, period_seconds)
             result += f'{int(period_value)}{period_name}'
     return result
