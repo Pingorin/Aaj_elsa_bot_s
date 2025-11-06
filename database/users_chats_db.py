@@ -67,11 +67,12 @@ class Database:
     
     async def add_pending_request(self, user_id, channel_id):
         """User ki join request ko database mein add karein."""
-        await self.pending_requests.insert_one({
-            '_id': f"{user_id}:{channel_id}", # Duplicate entry na ho
-            'user_id': user_id,
-            'channel_id': channel_id
-        })
+        # Use update_one with upsert=True to prevent duplicates
+        await self.pending_requests.update_one(
+            {'_id': f"{user_id}:{channel_id}"},
+            {'$set': {'user_id': user_id, 'channel_id': channel_id}},
+            upsert=True
+        )
 
     async def remove_pending_request(self, user_id, channel_id):
         """User ko pending request database se hatayein."""
@@ -101,7 +102,8 @@ class Database:
     
     async def add_user(self, id, name):
         user = self.new_user(id, name)
-        await self.col.insert_one(user)
+        # Use update_one with upsert=True to prevent duplicates
+        await self.col.update_one({'id': id}, {'$set': user}, upsert=True)
     
     async def is_user_exist(self, id):
         user = await self.col.find_one({'id':int(id)})
@@ -144,8 +146,9 @@ class Database:
     # --- End of Referral Functions ---
     
     async def add_chat(self, chat, title):
-        chat = self.new_group(chat, title)
-        await self.grp.insert_one(chat)
+        chat_doc = self.new_group(chat, title)
+        # Use update_one with upsert=True to prevent duplicates
+        await self.grp.update_one({'id': chat}, {'$set': chat_doc}, upsert=True)
 
     async def get_chat(self, chat):
         chat = await self.grp.find_one({'id':int(chat)})
@@ -231,14 +234,20 @@ class Database:
             current_time = datetime.datetime.now(tz=ist_timezone)
             time_difference = current_time - pastDate
             if time_difference > datetime.timedelta(seconds=time):
-                pastDate = user["last_verified"].astimefzone(ist_timezone)
+                # --- FIX: Corrected typo 'astimefzone' to 'astimezone' ---
+                pastDate = user["last_verified"].astimezone(ist_timezone)
                 second_time = user["second_time_verified"].astimezone(ist_timezone)
                 return second_time < pastDate
         return False
    
     async def create_verify_id(self, user_id: int, hash):
         res = {"user_id": user_id, "hash":hash, "verified":False}
-        return await self.verify_id.insert_one(res)
+        # Use update_one with upsert=True
+        await self.verify_id.update_one(
+            {"user_id": user_id, "hash": hash},
+            {'$set': res},
+            upsert=True
+        )
 
     async def get_verify_id_info(self, user_id: int, hash):
         return await self.verify_id.find_one({"user_id": user_id, "hash": hash})
@@ -264,23 +273,26 @@ class Database:
             elif isinstance(expiry_time, datetime.datetime) and datetime.datetime.now() <= expiry_time:
                 return True
             else:
+                # If expired, remove access
                 await self.users.update_one({"id": user_id}, {"$set": {"expiry_time": None}})
         return False
         
     async def update_one(self, filter_query, update_data):
         try:
             result = await self.users.update_one(filter_query, update_data)
-            return result.matched_count == 1
+            return result.matched_count > 0 or result.upserted_id is not None
         except Exception as e:
             print(f"Error updating document: {e}")
             return False
 
     async def get_expired(self, current_time):
+        # Find users whose expiry_time is set (not None) and is less than current_time
         expired_users = []
-        if data := self.users.find({"expiry_time": {"$lt": current_time}}):
-            async for user in data:
-                expired_users.append(user)
+        query = {"expiry_time": {"$ne": None, "$lt": current_time}}
+        async for user in self.users.find(query):
+            expired_users.append(user)
         return expired_users
+
 
     async def remove_premium_access(self, user_id):
         return await self.update_one(
@@ -297,11 +309,12 @@ class Database:
 
     async def update_referral_link(self, user_id, link, chat_id):
         # Naye 'referral_links' collection mein link save karein
-        await self.ref_links.insert_one({
-            '_id': link, 
-            'referrer_id': user_id, 
-            'chat_id': chat_id
-        })
+        # Use update_one with upsert=True to prevent duplicates
+        await self.ref_links.update_one(
+            {'_id': link},
+            {'$set': {'referrer_id': user_id, 'chat_id': chat_id}},
+            upsert=True
+        )
 
     async def get_referral_link(self, user_id, chat_id):
         # User ka link *specific group* ke liye search karein
@@ -312,11 +325,12 @@ class Database:
     
     async def log_referral(self, new_user_id, referrer_id, chat_id):
         # Log karein ki iss user ne iss group mein iss referrer ke through join kiya
-        await self.referrals.insert_one({
-            'user_id': new_user_id,
-            'referrer_id': referrer_id,
-            'chat_id': chat_id
-        })
+        # Use update_one with upsert=True to create a unique log per user/referrer/chat
+        await self.referrals.update_one(
+            {'user_id': new_user_id, 'referrer_id': referrer_id, 'chat_id': chat_id},
+            {'$set': {'timestamp': datetime.datetime.now()}},
+            upsert=True
+        )
 
     # --- FIX: Removed unused has_been_referred_in_group function ---
 
