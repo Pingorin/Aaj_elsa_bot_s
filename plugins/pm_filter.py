@@ -24,7 +24,7 @@ from pyrogram.errors import FloodWait, UserIsBlocked, MessageNotModified, PeerId
 from utils import (
     temp, get_settings, is_check_admin, get_status, get_hash, get_name, 
     get_size, save_group_settings, get_poster, get_readable_time, 
-    get_fsub_status  # <-- Added get_fsub_status, removed is_req_subscribed
+    get_fsub_status
 )
 from database.users_chats_db import db
 from database.ia_filterdb import Media, get_search_results, get_bad_files, get_file_details, get_available_qualities, get_available_years
@@ -58,10 +58,11 @@ async def group_search(client, message):
         if 'hindi' in message.text.lower() or 'tamil' in message.text.lower() or 'telugu' in message.text.lower() or 'malayalam' in message.text.lower() or 'kannada' in message.text.lower() or 'english' in message.text.lower() or 'gujarati' in message.text.lower(): 
             return await auto_filter(client, message)
 
-        if message.text.startswith("/"):
-            return
+        # --- FIX: Removed redundant check, as the filter ~filters.regex(r"^/") already handles this ---
+        # if message.text.startswith("/"):
+        #     return
         
-        elif re.findall(r'https?://\S+|www\.\S+|t\.me/\S+', message.text):
+        if re.findall(r'https?://\S+|www\.\S+|t\.me/\S+', message.text):
             if await is_check_admin(client, message.chat.id, message.from_user.id):
                 return
             await message.delete()
@@ -697,7 +698,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
 
     elif query.data.startswith("lang_art"):
         _, lang = query.data.split("#")
-        await query.answer(f"ʏᴏᴜ sᴇʟᴇᴄᴛᴇᴅ {lang.title()} ʟᴀɴɢᴜᴀɢᴇ ⚡️", show_alert=True)
+        await query.answer(f"ʏᴏᴜ sᴇʟᴇᴄᴛᴇD {lang.title()} ʟᴀɴɢᴜᴀɢᴇ ⚡️", show_alert=True)
   
     elif query.data == "start":
         buttons = [[
