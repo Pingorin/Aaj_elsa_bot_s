@@ -44,44 +44,46 @@ class temp(object):
 async def check_fsub_status(bot, user_id):
     """
     Aapke 3 cases ko check karta hai aur status batata hai.
+    (FIXED FOR RACE CONDITION)
     Returns: "MEMBER", "PENDING", "NOT_JOINED"
     """
     try:
+        # Step 1: Pata karo user ka channel mein status kya hai
         member = await bot.get_chat_member(AUTH_CHANNEL, user_id)
-        
-        # Case 1: User Channel Mein Hai (Member)
+
+        # Case 1: User member hai (ya admin/owner). File de do.
         if member.status in [enums.ChatMemberStatus.MEMBER, enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]:
             return "MEMBER"
-            
-        # Case 2: User 'Dismissed' (LEFT) ya BANNED hai.
-        # Agar woh 'left' ya 'banned' hai, toh woh pending nahi hai.
-        elif member.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED]:
+        
+        # Case 2: User ko dismiss/ban kar diya gaya hai (LEFT ya BANNED).
+        # Yahi "source of truth" hai. File mat do. DB check mat karo.
+        if member.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED]:
             return "NOT_JOINED"
-            
-        # Case 3: User 'Restricted' (Pending) ho sakta hai.
-        # Hum 'pass' karenge taaki neeche DB check ho.
-        else:
-            pass # This will lead to the fallback check
-            
+
+        # Case 3: User 'RESTRICTED' hai (matlab API ke hisaab se pending).
+        # Hum file de denge. (DB check karke double-sure ho rahe hain)
+        if member.status == enums.ChatMemberStatus.RESTRICTED:
+            if await db.is_join_request_pending(user_id, AUTH_CHANNEL):
+                return "PENDING"
+            else:
+                # Aisa nahi hona chahiye, par agar DB mein nahi hai, toh file mat do
+                return "NOT_JOINED"
+    
     except UserNotParticipant:
-        # UserNotParticipant ka matlab hai woh channel mein bilkul nahi hai.
-        # Ab humein database check karna hai ki kya usne request bheji thi.
+        # Case 4: User channel ka hissa nahi hai (na member, na left, na pending).
+        # Ho sakta hai usne request *just* bheji ho. Ab DB check karo.
         if await db.is_join_request_pending(user_id, AUTH_CHANNEL):
             return "PENDING"
         else:
             return "NOT_JOINED"
-            
-    except Exception as e:
-        # Koi aur error, jaise bot admin nahi hai
-        logger.error(f"Fsub check error: {e}")
-        return "NOT_JOINED" # Surakshit rehne ke liye, file mat do
 
-    # Fallback (Agar status RESTRICTED tha aur code yahan tak pahuncha)
-    # Dobara check karein ki woh pending list mein hai ya nahi.
-    if await db.is_join_request_pending(user_id, AUTH_CHANNEL):
-        return "PENDING"
-    else:
-        return "NOT_JOINED"
+    except Exception as e:
+        # Case 5: Koi aur error (jaise bot admin nahi hai).
+        logger.error(f"Fsub check error: {e}")
+        return "NOT_JOINED" # Hamesha safe side raho
+
+    # Fallback: Agar koi naya/unknown status aata hai, toh file mat do
+    return "NOT_JOINED"
 # --- END OF NEW FUNCTION ---
 
 
