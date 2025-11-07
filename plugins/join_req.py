@@ -3,60 +3,48 @@ from pyrogram.types import ChatJoinRequest, ChatMemberUpdated
 from database.users_chats_db import db
 from info import ADMINS, AUTH_CHANNEL
 import asyncio
+import logging  # <-- Ise add karein
 
-# (Aapka on_chat_join_request wala code yahan rahega...)
+logger = logging.getLogger(__name__)  # <-- Ise add karein
+
 @Client.on_chat_join_request(filters.chat(AUTH_CHANNEL))
 async def join_reqs_handler(client: Client, message: ChatJoinRequest):
+    """
+    Component 1: Jab user join request bhejta hai,
+    use database mein 'pending' list mein add kar do.
+    """
     try:
         await db.add_join_request(message.from_user.id, message.chat.id)
     except Exception as e:
-        print(f"Error saving join request: {e}")
+        logger.error(f"Error saving join request: {e}")  # <-- 'print' ko 'logger.error' se badlein
 
-
-# --- YEH HAI AAPKA MUKHYA FUNCTION ---
 
 @Client.on_chat_member_updated(filters.chat(AUTH_CHANNEL))
 async def chat_member_update_handler(client: Client, message: ChatMemberUpdated):
     """
-    Database cleanup:
+    Component 2: Database cleanup.
     Jab user ka status badle (approve, decline, cancel),
     use 'pending' list se remove kar do.
     """
     if not message.new_chat_member:
-        return  # Koi naya status nahi hai, kuch mat karo
+        return
 
     user_id = message.new_chat_member.user.id
     chat_id = message.chat.id
 
-    # --- NAYA LOGIC ---
-
-    # Case 1: User ne request bheji (Old=None, New=RESTRICTED)
-    # Ya user abhi bhi pending hai
     if message.new_chat_member.status == enums.ChatMemberStatus.RESTRICTED:
-        # User abhi 'pending' state mein hai.
-        # Use database se *nahi* hatana hai.
         return
 
-    # Case 2: User ka status 'pending' nahi raha
-    # (Matlab admin ne approve kiya, dismiss kiya, ya user ne cancel kiya)
-    #
-    # Old=RESTRICTED, New=MEMBER (Approved)
-    # Old=RESTRICTED, New=LEFT (Dismissed ya Cancelled)
-    #
-    # Dono hi sooraton mein, woh ab 'pending' nahi hai.
-    # Isliye hum unhe 'join_requests' (pending) collection se remove kar denge.
     try:
-        # Yeh function user ko 'pending' list se delete kar dega.
-        # Yahi aapka "Approve" aur "Dismiss" dono ka logic handle kar lega,
-        # kyunki dono hi cases mein user ab 'pending' nahi rehta.
         await db.remove_join_request(user_id, chat_id)
     except Exception as e:
-        print(f"Error cleaning up join request: {e}")
+        logger.error(f"Error cleaning up join request: {e}")  # <-- 'print' ko 'logger.error' se badlein
 
 
-# (Aapka /delreq admin command yahan rahega...)
 @Client.on_message(filters.command("delreq") & filters.private & filters.user(ADMINS))
 async def del_requests(client, message):
+    """
+    Admin command: Pending list ko poori tarah clear karne ke liye.
+    """
     await db.del_join_req()    
     await message.reply("<b>⚙️ ꜱᴜᴄᴄᴇꜱꜱғᴜʟʟʏ ᴘᴇɴᴅɪɴɢ ᴊᴏɪɴ ʀᴇQᴜᴇꜱᴛ ʟᴏɢꜱ ᴅᴇʟᴇᴛᴇᴅ</b>")
-
