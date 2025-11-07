@@ -40,36 +40,48 @@ class temp(object):
 # --- REMOVED OLD FSUB FUNCTION ---
 # async def is_req_subscribed(bot, query): ... (Poora function yahan se hata diya gaya hai)
 
-# --- ADDED NEW ADVANCED FSUB FUNCTION ---
+# --- THIS IS THE FIX ---
 async def check_fsub_status(bot, user_id):
     """
     Aapke 3 cases ko check karta hai aur status batata hai.
     Returns: "MEMBER", "PENDING", "NOT_JOINED"
     """
     try:
-        # Case 1: User Channel Mein Hai (Member)
         member = await bot.get_chat_member(AUTH_CHANNEL, user_id)
+        
+        # Case 1: User Channel Mein Hai (Member)
         if member.status in [enums.ChatMemberStatus.MEMBER, enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]:
             return "MEMBER"
+            
+        # Case 2: User 'Dismissed' (LEFT) ya BANNED hai.
+        # Agar woh 'left' ya 'banned' hai, toh woh pending nahi hai.
+        elif member.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED]:
+            return "NOT_JOINED"
+            
+        # Case 3: User 'Restricted' (Pending) ho sakta hai.
+        # Hum 'pass' karenge taaki neeche DB check ho.
         else:
-            # Agar member hai lekin status 'left' ya 'banned' hai,
-            # toh bhi woh "NOT_JOINED" hi maana jaayega.
-            pass
+            pass # This will lead to the fallback check
+            
     except UserNotParticipant:
-        # User channel ka member nahi hai. Ab Case 2 ya 3 check karo.
-        pass
+        # UserNotParticipant ka matlab hai woh channel mein bilkul nahi hai.
+        # Ab humein database check karna hai ki kya usne request bheji thi.
+        if await db.is_join_request_pending(user_id, AUTH_CHANNEL):
+            return "PENDING"
+        else:
+            return "NOT_JOINED"
+            
     except Exception as e:
         # Koi aur error, jaise bot admin nahi hai
         logger.error(f"Fsub check error: {e}")
         return "NOT_JOINED" # Surakshit rehne ke liye, file mat do
 
-    # Case 2: User Ne Join Request Bhej Di Hai (Pending)
-    # Yahan naya database function check ho raha hai
+    # Fallback (Agar status RESTRICTED tha aur code yahan tak pahuncha)
+    # Dobara check karein ki woh pending list mein hai ya nahi.
     if await db.is_join_request_pending(user_id, AUTH_CHANNEL):
         return "PENDING"
-    
-    # Case 3: User Ne Kuch Nahi Kiya (Na Member, Na Pending)
-    return "NOT_JOINED"
+    else:
+        return "NOT_JOINED"
 # --- END OF NEW FUNCTION ---
 
 
