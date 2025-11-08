@@ -13,7 +13,7 @@ import pytz
 import time
 import re
 import os 
-from shortzy import Shortzy
+from shortzy import Shortzy # (Ise rakha gaya hai, lekin 'get_shortlink' mein istemaal nahi hoga)
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from database.users_chats_db import db
@@ -39,6 +39,7 @@ class temp(object):
     CHAT = {}
 
 # --- YAHAN SE AAPKA FSUB CODE SHURU HOTA HAI ---
+# (Yeh poora code block sahi hai, ismein koi badlaav nahi)
 
 async def _get_fsub_status(bot, user_id, channel_id):
     """(Internal) Ek single 'Advanced' channel ka status check karta hai (API + DB)."""
@@ -323,6 +324,7 @@ async def get_shortlink(link, grp_id, is_second_shortener=False):
         logger.error(f"get_shortlink function mein error: {e}")
         return link # Fail hone par original link
 # --- 'get_shortlink' FIX KHATAM ---
+
 
 def get_file_id(message: "Message") -> Any:
     # (Yeh function poora waise hi rahega, koi badlaav nahi)
