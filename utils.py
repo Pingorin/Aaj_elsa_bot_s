@@ -1,7 +1,7 @@
 import logging
 from pyrogram.errors import InputUserDeactivated, UserNotParticipant, FloodWait, UserIsBlocked, PeerIdInvalid
-# --- YEH BADLAAV HAI: AUTH_CHANNEL_2 import karein ---
-from info import AUTH_CHANNEL, AUTH_CHANNEL_2, LONG_IMDB_DESCRIPTION, IS_VERIFY
+# --- YEH BADLAAV HAI: AUTH_CHANNEL_3 import karein ---
+from info import AUTH_CHANNEL, AUTH_CHANNEL_2, AUTH_CHANNEL_3, LONG_IMDB_DESCRIPTION, IS_VERIFY
 from imdb import Cinemagoer
 import asyncio
 from pyrogram.types import Message, InlineKeyboardButton
@@ -36,13 +36,10 @@ class temp(object):
     GROUPS_CANCEL = False    
     CHAT = {}
 
-# --- PURANA check_fsub_status HATA KAR YEH DO NAYE FUNCTIONS PASTE KAREIN ---
+# --- YAHAN SE AAPKA PURANA FSUB CODE REPLACE KAREIN ---
 
 async def _get_fsub_status(bot, user_id, channel_id):
-    """(Internal) Ek single channel ka status check karta hai (API + DB)."""
-    
-    # Is function mein 'if not channel_id' check nahi hai, woh main function mein hai.
-    
+    """(Internal) Ek single 'Advanced' channel ka status check karta hai (API + DB)."""
     try:
         member = await bot.get_chat_member(channel_id, user_id)
 
@@ -60,32 +57,58 @@ async def _get_fsub_status(bot, user_id, channel_id):
             return "NOT_JOINED"
             
     except Exception as e:
-        logger.error(f"Fsub check error for {channel_id}: {e}")
+        logger.error(f"Advanced Fsub check error for {channel_id}: {e}")
         return "NOT_JOINED"
     
     return "NOT_JOINED" # Fallback
 
+# --- YEH NAYA FUNCTION ADD HUA HAI ---
+async def _get_normal_fsub_status(bot, user_id, channel_id):
+    """(Internal) Ek single 'Normal' channel ka status (sirf member) check karta hai."""
+    try:
+        member = await bot.get_chat_member(channel_id, user_id)
+        
+        if member.status in [enums.ChatMemberStatus.MEMBER, enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]:
+            return "MEMBER"
+        else:
+            return "NOT_JOINED" # (Left, Banned, etc. sab 'not joined' hain)
+            
+    except UserNotParticipant:
+        return "NOT_JOINED" # User member nahi hai
+            
+    except Exception as e:
+        logger.error(f"Normal Fsub check error for {channel_id}: {e}")
+        return "NOT_JOINED" # Safety fallback
+# --- YAHAN TAK ---
 
 async def check_fsub_status(bot, user_id):
     """
-    Dono channels ka status check karta hai aur (status1, status2) return karta hai.
+    Teeno channels ka status check karta hai aur (status1, status2, status3) return karta hai.
     """
     
-    # Pehla channel check karein
+    # Pehla channel (Advanced)
     if not AUTH_CHANNEL:
-        status_1 = "MEMBER" # Agar set nahi hai, toh maan lo ki joined hai
+        status_1 = "MEMBER"
     else:
         status_1 = await _get_fsub_status(bot, user_id, AUTH_CHANNEL)
     
-    # Doosra channel check karein
+    # Doosra channel (Advanced)
     if not AUTH_CHANNEL_2:
-        status_2 = "MEMBER" # Agar set nahi hai, toh maan lo ki joined hai
+        status_2 = "MEMBER"
     else:
         status_2 = await _get_fsub_status(bot, user_id, AUTH_CHANNEL_2)
+        
+    # --- YEH BADLAAV HAI ---
+    # Teesra channel (Normal)
+    if not AUTH_CHANNEL_3:
+        status_3 = "MEMBER"
+    else:
+        status_3 = await _get_normal_fsub_status(bot, user_id, AUTH_CHANNEL_3)
+    # --- YAHAN TAK ---
     
-    return status_1, status_2
+    return status_1, status_2, status_3 # Ab 3 values return hongi
 
-# --- YAHAN FIX KHATAM HOTA HAI ---
+# --- YAHAN FSUB LOGIC KHATAM HOTA HAI ---
 
 
 async def get_poster(query, bulk=False, id=False, file=None):
