@@ -1,6 +1,7 @@
 import logging
 from pyrogram.errors import InputUserDeactivated, UserNotParticipant, FloodWait, UserIsBlocked, PeerIdInvalid
-from info import AUTH_CHANNEL, LONG_IMDB_DESCRIPTION, IS_VERIFY
+# --- YEH BADLAAV HAI ---
+from info import AUTH_CHANNEL, AUTH_CHANNEL_2, LONG_IMDB_DESCRIPTION, IS_VERIFY
 from imdb import Cinemagoer
 import asyncio
 from pyrogram.types import Message, InlineKeyboardButton
@@ -35,55 +36,48 @@ class temp(object):
     GROUPS_CANCEL = False    
     CHAT = {}
 
-# --- REMOVED OLD FSUB FUNCTION ---
+# --- PURANA check_fsub_status HATA KAR YEH DO NAYE FUNCTIONS PASTE KAREIN ---
 
-# --- YEH HAI AAPKA ASLI AUR SAHI FIX ---
-# --- PURANA check_fsub_status FUNCTION POORA DELETE KAREIN ---
-# --- AUR YEH NAYA PASTE KAREIN ---
-
-async def check_fsub_status(bot, user_id):
-    """
-    API aur DB, dono ka istemaal karke race condition ko fix karta hai.
-    Returns: "MEMBER", "PENDING", "NOT_JOINED"
-    """
+async def _get_fsub_status(bot, user_id, channel_id):
+    """(Internal) Ek single channel ka status check karta hai (API + DB)."""
+    if not channel_id:
+        return "MEMBER" # Agar channel set nahi hai, toh maan lo ki joined hai
+        
     try:
-        # Step 1: API se pucho (Live status).
-        member = await bot.get_chat_member(AUTH_CHANNEL, user_id)
+        member = await bot.get_chat_member(channel_id, user_id)
 
-        # Case 1: User Member hai. File do.
         if member.status in [enums.ChatMemberStatus.MEMBER, enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]:
             return "MEMBER"
-            
-        # Case 2: User ko Kick/Ban kiya gaya hai (LEFT/BANNED). File mat do.
-        # Yeh "Dismiss" waali problem ko fix karta hai.
         if member.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED]:
             return "NOT_JOINED"
-            
-        # Case 3: User API ke hisaab se PENDING (RESTRICTED) hai.
-        # (Aisa tab hota hai jab bot ke paas invite permission ho). File do.
         if member.status == enums.ChatMemberStatus.RESTRICTED:
             return "PENDING"
 
     except UserNotParticipant:
-        # Case 4: API kehti hai user channel mein nahi hai.
-        # (Yani: 1. Naya user, 2. Dismissed user, 3. Cancelled user)
-        
-        # YEH AAPKI "APPROVAL KA WAIT" WALI PROBLEM KO FIX KARTA HAI:
-        # Ab hum DB se check karenge ki kya woh 'pending' list mein hai.
-        if await db.is_join_request_pending(user_id, AUTH_CHANNEL):
-            # Agar woh DB mein hai, matlab usne request bheji thi. File de do.
+        if await db.is_join_request_pending(user_id, channel_id):
             return "PENDING"
         else:
-            # Agar woh DB mein nahi hai, matlab woh naya user hai. File mat do.
             return "NOT_JOINED"
             
     except Exception as e:
-        # Case 5: Koi aur error. File mat do.
-        logger.error(f"Fsub check error: {e}")
+        logger.error(f"Fsub check error for {channel_id}: {e}")
         return "NOT_JOINED"
+    
+    return "NOT_JOINED" # Fallback
 
-    # Fallback (kabhi yahan tak code nahi aana chahiye)
-    return "NOT_JOINED"
+
+async def check_fsub_status(bot, user_id):
+    """
+    Dono channels ka status check karta hai aur (status1, status2) return karta hai.
+    """
+    
+    # Pehla channel check karein
+    status_1 = await _get_fsub_status(bot, user_id, AUTH_CHANNEL)
+    
+    # Doosra channel check karein
+    status_2 = await _get_fsub_status(bot, user_id, AUTH_CHANNEL_2)
+    
+    return status_1, status_2
 
 # --- YAHAN FIX KHATAM HOTA HAI ---
 
