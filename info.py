@@ -61,6 +61,14 @@ AUTH_CHANNEL = int(auth_channel) if auth_channel and id_pattern.search(auth_chan
 auth_channel_2 = environ.get('AUTH_CHANNEL_2', '-1003295790341') # Yahan apne doosre channel ka ID daalein
 AUTH_CHANNEL_2 = int(auth_channel_2) if auth_channel_2 and id_pattern.search(auth_channel_2) else None
 # --- YAHAN TAK ---
+# --- YEH NAYI LINES ADD KAREIN ---
+# Teesra channel (Normal Fsub)
+# Yahan ID ya @username daalein (jaise: -100123... ya '@mychannel')
+AUTH_CHANNEL_3 = environ.get('AUTH_CHANNEL_3', '-1002954499406') 
+# Yahan upar waale channel ka poora invite link daalein
+# (jaise: https://t.me/mychannel ya https://t.me/joinchat/XYZ...)
+AUTH_CHANNEL_3_INVITE_LINK = environ.get('AUTH_CHANNEL_3_INVITE_LINK', None)
+# --- YAHAN TAK ---
 
 SUPPORT_GROUP = int(environ.get('SUPPORT_GROUP', '-1003115990357'))
 
