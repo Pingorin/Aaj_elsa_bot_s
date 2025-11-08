@@ -57,18 +57,19 @@ QUALITIES = ["4K", "2160p", "1080p", "720p", "480p", "360p"]
 
 auth_channel = environ.get('AUTH_CHANNEL', '-1003105162989')
 AUTH_CHANNEL = int(auth_channel) if auth_channel and id_pattern.search(auth_channel) else None
-# --- YEH NAYI LINES ADD KAREIN ---
+
 auth_channel_2 = environ.get('AUTH_CHANNEL_2', '-1003295790341') # Yahan apne doosre channel ka ID daalein
 AUTH_CHANNEL_2 = int(auth_channel_2) if auth_channel_2 and id_pattern.search(auth_channel_2) else None
-# --- YAHAN TAK ---
-# --- YEH NAYI LINES ADD KAREIN ---
+
+# --- YEH BADLAAV HAI ---
 # Teesra channel (Normal Fsub)
 # Yahan ID ya @username daalein (jaise: -100123... ya '@mychannel')
-AUTH_CHANNEL_3 = environ.get('AUTH_CHANNEL_3', '-1002954499406') 
-# Yahan upar waale channel ka poora invite link daalein
-# (jaise: https://t.me/mychannel ya https://t.me/joinchat/XYZ...)
-AUTH_CHANNEL_3_INVITE_LINK = environ.get('AUTH_CHANNEL_3_INVITE_LINK', 'https://t.me/+mpcIcMFwCPNjNzQ1')
+auth_channel_3 = environ.get('AUTH_CHANNEL_3', '-1002954499406') 
+# FIX: ID ko integer mein convert karein agar woh number hai, varna string (jaise @username) rehne dein
+AUTH_CHANNEL_3 = int(auth_channel_3) if auth_channel_3 and id_pattern.search(auth_channel_3) else auth_channel_3
+# AUTH_CHANNEL_3_INVITE_LINK waali line hata di gayi hai.
 # --- YAHAN TAK ---
+
 # --- YEH NAYA CHANNEL ADD KAREIN (Post-Verification FSub) ---
 # Yeh channel 'Advanced Fsub' (Request wala) hona chahiye
 AUTH_CHANNEL_4 = environ.get('AUTH_CHANNEL_4', '-1003210900437') # Naye channel ka ID daalein
