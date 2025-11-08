@@ -1,7 +1,10 @@
 import logging
 from pyrogram.errors import InputUserDeactivated, UserNotParticipant, FloodWait, UserIsBlocked, PeerIdInvalid
-# --- YEH BADLAAV HAI: AUTH_CHANNEL_3 import karein ---
-from info import AUTH_CHANNEL, AUTH_CHANNEL_2, AUTH_CHANNEL_3, LONG_IMDB_DESCRIPTION, IS_VERIFY
+# --- YEH BADLAAV HAI: AUTH_CHANNEL_4 import karein ---
+from info import (
+    AUTH_CHANNEL, AUTH_CHANNEL_2, AUTH_CHANNEL_3, AUTH_CHANNEL_4, 
+    LONG_IMDB_DESCRIPTION, IS_VERIFY
+)
 from imdb import Cinemagoer
 import asyncio
 from pyrogram.types import Message, InlineKeyboardButton
@@ -36,7 +39,7 @@ class temp(object):
     GROUPS_CANCEL = False    
     CHAT = {}
 
-# --- YAHAN SE AAPKA PURANA FSUB CODE REPLACE KAREIN ---
+# --- YAHAN SE AAPKA FSUB CODE SHURU HOTA HAI ---
 
 async def _get_fsub_status(bot, user_id, channel_id):
     """(Internal) Ek single 'Advanced' channel ka status check karta hai (API + DB)."""
@@ -62,7 +65,6 @@ async def _get_fsub_status(bot, user_id, channel_id):
     
     return "NOT_JOINED" # Fallback
 
-# --- YEH NAYA FUNCTION ADD HUA HAI ---
 async def _get_normal_fsub_status(bot, user_id, channel_id):
     """(Internal) Ek single 'Normal' channel ka status (sirf member) check karta hai."""
     try:
@@ -79,11 +81,11 @@ async def _get_normal_fsub_status(bot, user_id, channel_id):
     except Exception as e:
         logger.error(f"Normal Fsub check error for {channel_id}: {e}")
         return "NOT_JOINED" # Safety fallback
-# --- YAHAN TAK ---
 
 async def check_fsub_status(bot, user_id):
     """
-    Teeno channels ka status check karta hai aur (status1, status2, status3) return karta hai.
+    Pehle teen channels (FSub 1, 2, 3) ka status check karta hai.
+    Returns: (status1, status2, status3)
     """
     
     # Pehla channel (Advanced)
@@ -98,16 +100,26 @@ async def check_fsub_status(bot, user_id):
     else:
         status_2 = await _get_fsub_status(bot, user_id, AUTH_CHANNEL_2)
         
-    # --- YEH BADLAAV HAI ---
     # Teesra channel (Normal)
     if not AUTH_CHANNEL_3:
         status_3 = "MEMBER"
     else:
         status_3 = await _get_normal_fsub_status(bot, user_id, AUTH_CHANNEL_3)
-    # --- YAHAN TAK ---
     
-    return status_1, status_2, status_3 # Ab 3 values return hongi
+    return status_1, status_2, status_3
 
+# --- YEH NAYA FUNCTION ADD KIYA GAYA HAI ---
+async def check_fsub_4_status(bot, user_id):
+    """
+    Sirf chauthe (post-verify) channel ka status check karta hai.
+    Returns: "MEMBER", "PENDING", "NOT_JOINED"
+    """
+    if not AUTH_CHANNEL_4:
+        return "MEMBER" # Agar set nahi hai, toh maan lo joined hai
+    
+    # Chautha channel "Advanced" (request) type ka hai
+    # Isliye hum _get_fsub_status ka istemaal kar rahe hain
+    return await _get_fsub_status(bot, user_id, AUTH_CHANNEL_4)
 # --- YAHAN FSUB LOGIC KHATAM HOTA HAI ---
 
 
