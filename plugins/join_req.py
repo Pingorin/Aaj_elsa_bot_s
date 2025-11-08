@@ -1,7 +1,7 @@
 from pyrogram import Client, filters, enums
 from pyrogram.types import ChatJoinRequest, ChatMemberUpdated
 from database.users_chats_db import db
-from info import ADMINS, AUTH_CHANNEL
+from info import ADMINS, AUTH_CHANNEL, LOG_CHANNEL  # <-- Yahan LOG_CHANNEL import karein
 import logging
 
 # Logger set up karein
@@ -23,27 +23,65 @@ async def join_reqs_handler(client: Client, message: ChatJoinRequest):
 @Client.on_chat_member_updated(filters.chat(AUTH_CHANNEL))
 async def chat_member_update_handler(client: Client, update: ChatMemberUpdated):
     """
-    Component 2: Database Cleanup (Approve ya Dismiss hone par)
+    Handles Approve, Dismiss, and Cancel events.
+    1. Logs the action.
+    2. Removes user from the 'pending' DB.
     """
     if not update.new_chat_member:
         return
 
-    # Hum us user ka ID lenge jiska status badla hai
     user_id = update.new_chat_member.user.id
     chat_id = update.chat.id
-
+    
     try:
-        # Jab user request bhejta hai, tab naya status 'RESTRICTED' (pending) hota hai.
-        # Humein is status ko अनदेखा (ignore) karna hai.
+        # --- YEH HAI AAPKA GOAL 3 (Pending list se Remove karna) ---
+        
+        # Step 1: Agar user 'pending' ban raha hai, toh DB se remove *mat* karo.
         if update.new_chat_member.status == enums.ChatMemberStatus.RESTRICTED:
-            return  # User abhi bhi pending hai, use list se *nahi* hatana hai
+            return  # User abhi request kar raha hai, DB mein add ho chuka hai, bas.
 
-        # Agar status 'RESTRICTED' nahi hai, (matlab MEMBER ya LEFT hua)
-        # toh woh ab 'pending' nahi hai. Use list se hata do.
+        # Step 2: Agar user 'pending' nahi raha (MEMBER ya LEFT hua),
+        # toh use 'pending' DB se remove kar do.
         await db.remove_join_request(user_id, chat_id)
 
+        # --- YEH HAI AAPKA GOAL 1 & 2 (Log Message Bhejna) ---
+        
+        # Hum sirf tab log karenge jab status 'pending' (RESTRICTED) se badla ho.
+        if update.old_chat_member and update.old_chat_member.status == enums.ChatMemberStatus.RESTRICTED:
+            
+            admin = update.from_user # Admin/User jisne action liya
+            user = update.new_chat_member.user # User jispar action hua
+
+            # Case A: Admin ne "Dismiss" kiya (ya user ne khud "Cancel" kiya)
+            if update.new_chat_member.status == enums.ChatMemberStatus.LEFT:
+                
+                # Pata lagao ki admin ne kiya ya user ne khud
+                if admin.id == user.id:
+                    log_message = (
+                        f"**Join Request Cancelled 🤷‍♂️**\n\n"
+                        f"**User:** {user.mention} (ID: `{user.id}`)\n"
+                        f"*(User ne khud cancel kiya)*"
+                    )
+                else:
+                    log_message = (
+                        f"**Join Request Dismissed 👎**\n\n"
+                        f"**User:** {user.mention} (ID: `{user.id}`)\n"
+                        f"**Admin:** {admin.mention} (ID: `{admin.id}`)"
+                    )
+                
+                await client.send_message(LOG_CHANNEL, log_message)
+
+            # Case B: Admin ne "Approve" kiya
+            elif update.new_chat_member.status == enums.ChatMemberStatus.MEMBER:
+                await client.send_message(
+                    LOG_CHANNEL,
+                    f"**Join Request Approved 👍**\n\n"
+                    f"**User:** {user.mention} (ID: `{user.id}`)\n"
+                    f"**Admin:** {admin.mention} (ID: `{admin.id}`)"
+                )
+
     except Exception as e:
-        logger.error(f"Pending list se user {user_id} ko remove karne me error: {e}")
+        logger.error(f"chat_member_update_handler mein error: {e}")
 
 
 @Client.on_message(filters.command("delreq") & filters.private & filters.user(ADMINS))
