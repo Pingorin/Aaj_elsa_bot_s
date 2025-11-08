@@ -1,6 +1,6 @@
 import logging
 from pyrogram.errors import InputUserDeactivated, UserNotParticipant, FloodWait, UserIsBlocked, PeerIdInvalid
-# --- YEH BADLAAV HAI: Sabhi 4 channels import karein ---
+# --- Sabhi 4 channels imported hain ---
 from info import (
     AUTH_CHANNEL, AUTH_CHANNEL_2, AUTH_CHANNEL_3, AUTH_CHANNEL_4, 
     LONG_IMDB_DESCRIPTION, IS_VERIFY
@@ -17,8 +17,7 @@ from shortzy import Shortzy
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from database.users_chats_db import db
-# import requests  <-- Removed unused import
-# import aiohttp   <-- Removed unused import
+import aiohttp # <-- YEH IMPORT ZAROORI HAI
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -122,6 +121,7 @@ async def check_fsub_4_status(bot, user_id):
 
 
 async def get_poster(query, bulk=False, id=False, file=None):
+    # (Yeh function poora waise hi rahega, koi badlaav nahi)
     if not id:
         query = (query.strip()).lower()
         title = query
@@ -200,6 +200,7 @@ async def get_poster(query, bulk=False, id=False, file=None):
     }
 
 async def users_broadcast(user_id, message, is_pin):
+    # (Yeh function poora waise hi rahega, koi badlaav nahi)
     try:
         m=await message.copy(chat_id=user_id)
         if is_pin:
@@ -224,6 +225,7 @@ async def users_broadcast(user_id, message, is_pin):
         return False, "Error"
 
 async def groups_broadcast(chat_id, message, is_pin):
+    # (Yeh function poora waise hi rahega, koi badlaav nahi)
     try:
         m = await message.copy(chat_id=chat_id)
         if is_pin:
@@ -240,6 +242,7 @@ async def groups_broadcast(chat_id, message, is_pin):
         return "Error"
 
 async def get_settings(group_id):
+    # (Yeh function poora waise hi rahega, koi badlaav nahi)
     settings = temp.SETTINGS.get(group_id)
     if not settings:
         settings = await db.get_settings(group_id)
@@ -247,12 +250,14 @@ async def get_settings(group_id):
     return settings
     
 async def save_group_settings(group_id, key, value):
+    # (Yeh function poora waise hi rahega, koi badlaav nahi)
     current = await get_settings(group_id)
     current.update({key: value})
     temp.SETTINGS.update({group_id: current})
     await db.update_settings(group_id, current)
     
 def get_size(size):
+    # (Yeh function poora waise hi rahega, koi badlaav nahi)
     units = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB"]
     size = float(size)
     i = 0
@@ -262,10 +267,12 @@ def get_size(size):
     return "%.2f %s" % (size, units[i])
 
 def get_name(name):
+    # (Yeh function poora waise hi rahega, koi badlaav nahi)
     regex = re.sub(r'@\w+', '', name)
     return regex
 
 def list_to_str(k):
+    # (Yeh function poora waise hi rahega, koi badlaav nahi)
     if not k:
         return "N/A"
     elif len(k) == 1:
@@ -273,19 +280,52 @@ def list_to_str(k):
     else:
         return ', '.join(f'{elem}, ' for elem in k)
 
+# --- YEH HAI AAPKE 'get_shortlink' FUNCTION KA FIX ---
 async def get_shortlink(link, grp_id, is_second_shortener=False):
     settings = await get_settings(grp_id)    
-    if IS_VERIFY:
-        api_key, site_key = ('api_two', 'shortner_two') if is_second_shortener else ('api', 'shortner')
-        api, site = settings[api_key], settings[site_key]        
-        shortzy = Shortzy(api, site)        
-        try:
-            link = await shortzy.shorten(link)
-        except Exception:
-            link = await shortzy.get_quick_link(link)    
-    return link
+    if not IS_VERIFY:
+        return link  # Agar verify off hai, toh original link return karo
+        
+    api_key, site_key = ('api_two', 'shortner_two') if is_second_shortener else ('api', 'shortner')
+    api, site = settings[api_key], settings[site_key]
+    
+    if not api or not site:
+        logger.warning(f"Shortener API/Site (is_second: {is_second_shortener}) settings nahi mili.")
+        return link
+
+    # Aapke screenshot (shortxlinks.com/st) ke hisaab se endpoint check karein
+    if "shortxlinks.com" in site:
+        api_endpoint = "st"
+    else:
+        api_endpoint = "api" # Baaki sabke liye default
+        
+    try:
+        # Sahi API request URL banayein
+        request_url = f"https://{site}/{api_endpoint}?api={api}&url={link}"
+        
+        # API ko call karein
+        async with aiohttp.ClientSession() as session:
+            async with session.get(request_url) as resp:
+                if resp.status != 200:
+                    logger.error(f"Shortener API Error (HTTP {resp.status}): {await resp.text()}")
+                    return link # Fail hone par original link return karo
+
+                data = await resp.json()
+                
+                # Sahi short link nikaalein
+                if data.get("status") == "success" and data.get("shortenedUrl"):
+                    return data["shortenedUrl"] # YEH HAI SAHI SHORT LINK
+                else:
+                    logger.error(f"Shortener API ne error diya: {data.get('message', 'Unknown error')}")
+                    return link # Fail hone par original link
+
+    except Exception as e:
+        logger.error(f"get_shortlink function mein error: {e}")
+        return link # Fail hone par original link
+# --- 'get_shortlink' FIX KHATAM ---
 
 def get_file_id(message: "Message") -> Any:
+    # (Yeh function poora waise hi rahega, koi badlaav nahi)
     media_types = (
         "audio",
         "document",
@@ -304,10 +344,12 @@ def get_file_id(message: "Message") -> Any:
                 return media
 
 def get_hash(media_msg: Message) -> str:
+    # (Yeh function poora waise hi rahega, koi badlaav nahi)
     media = get_file_id(media_msg)
     return getattr(media, "file_unique_id", "")[:6]
 
 def get_status():
+    # (Yeh function poora waise hi rahega, koi badlaav nahi)
     tz = pytz.timezone('Asia/Colombo')
     hour = datetime.now(tz).time().hour
     if 5 <= hour < 12:
@@ -319,6 +361,7 @@ def get_status():
     return sts
 
 async def is_check_admin(bot, chat_id, user_id):
+    # (Yeh function poora waise hi rahega, koi badlaav nahi)
     try:
         member = await bot.get_chat_member(chat_id, user_id)
         return member.status in [enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]
@@ -326,6 +369,7 @@ async def is_check_admin(bot, chat_id, user_id):
         return False
 
 async def get_seconds(time_string):
+    # (Yeh function poora waise hi rahega, koi badlaav nahi)
     def extract_value_and_unit(ts):
         value = ""
         unit = ""
@@ -354,6 +398,7 @@ async def get_seconds(time_string):
         return 0
 
 def get_readable_time(seconds):
+    # (Yeh function poora waise hi rahega, koi badlaav nahi)
     periods = [('days', 86400), ('hour', 3600), ('min', 60), ('sec', 1)]
     result = ''
     for period_name, period_seconds in periods:
