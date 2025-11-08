@@ -1,6 +1,6 @@
 import logging
 from pyrogram.errors import InputUserDeactivated, UserNotParticipant, FloodWait, UserIsBlocked, PeerIdInvalid
-# --- YEH BADLAAV HAI ---
+# --- YEH BADLAAV HAI: AUTH_CHANNEL_2 import karein ---
 from info import AUTH_CHANNEL, AUTH_CHANNEL_2, LONG_IMDB_DESCRIPTION, IS_VERIFY
 from imdb import Cinemagoer
 import asyncio
@@ -40,9 +40,9 @@ class temp(object):
 
 async def _get_fsub_status(bot, user_id, channel_id):
     """(Internal) Ek single channel ka status check karta hai (API + DB)."""
-    if not channel_id:
-        return "MEMBER" # Agar channel set nahi hai, toh maan lo ki joined hai
-        
+    
+    # Is function mein 'if not channel_id' check nahi hai, woh main function mein hai.
+    
     try:
         member = await bot.get_chat_member(channel_id, user_id)
 
@@ -72,10 +72,16 @@ async def check_fsub_status(bot, user_id):
     """
     
     # Pehla channel check karein
-    status_1 = await _get_fsub_status(bot, user_id, AUTH_CHANNEL)
+    if not AUTH_CHANNEL:
+        status_1 = "MEMBER" # Agar set nahi hai, toh maan lo ki joined hai
+    else:
+        status_1 = await _get_fsub_status(bot, user_id, AUTH_CHANNEL)
     
     # Doosra channel check karein
-    status_2 = await _get_fsub_status(bot, user_id, AUTH_CHANNEL_2)
+    if not AUTH_CHANNEL_2:
+        status_2 = "MEMBER" # Agar set nahi hai, toh maan lo ki joined hai
+    else:
+        status_2 = await _get_fsub_status(bot, user_id, AUTH_CHANNEL_2)
     
     return status_1, status_2
 
