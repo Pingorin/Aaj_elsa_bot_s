@@ -1,6 +1,6 @@
 import logging
 from pyrogram.errors import InputUserDeactivated, UserNotParticipant, FloodWait, UserIsBlocked, PeerIdInvalid
-# --- YEH BADLAAV HAI: AUTH_CHANNEL_4 import karein ---
+# --- YEH BADLAAV HAI: Sabhi 4 channels import karein ---
 from info import (
     AUTH_CHANNEL, AUTH_CHANNEL_2, AUTH_CHANNEL_3, AUTH_CHANNEL_4, 
     LONG_IMDB_DESCRIPTION, IS_VERIFY
@@ -108,7 +108,6 @@ async def check_fsub_status(bot, user_id):
     
     return status_1, status_2, status_3
 
-# --- YEH NAYA FUNCTION ADD KIYA GAYA HAI ---
 async def check_fsub_4_status(bot, user_id):
     """
     Sirf chauthe (post-verify) channel ka status check karta hai.
@@ -118,7 +117,6 @@ async def check_fsub_4_status(bot, user_id):
         return "MEMBER" # Agar set nahi hai, toh maan lo joined hai
     
     # Chautha channel "Advanced" (request) type ka hai
-    # Isliye hum _get_fsub_status ka istemaal kar rahe hain
     return await _get_fsub_status(bot, user_id, AUTH_CHANNEL_4)
 # --- YAHAN FSUB LOGIC KHATAM HOTA HAI ---
 
@@ -282,7 +280,6 @@ async def get_shortlink(link, grp_id, is_second_shortener=False):
         api, site = settings[api_key], settings[site_key]        
         shortzy = Shortzy(api, site)        
         try:
-            # --- FIX: Changed .convert to .shorten ---
             link = await shortzy.shorten(link)
         except Exception:
             link = await shortzy.get_quick_link(link)    
