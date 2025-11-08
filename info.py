@@ -69,6 +69,12 @@ AUTH_CHANNEL_3 = environ.get('AUTH_CHANNEL_3', '-1002954499406')
 # (jaise: https://t.me/mychannel ya https://t.me/joinchat/XYZ...)
 AUTH_CHANNEL_3_INVITE_LINK = environ.get('AUTH_CHANNEL_3_INVITE_LINK', 'https://t.me/+mpcIcMFwCPNjNzQ1')
 # --- YAHAN TAK ---
+# --- YEH NAYA CHANNEL ADD KAREIN (Post-Verification FSub) ---
+# Yeh channel 'Advanced Fsub' (Request wala) hona chahiye
+AUTH_CHANNEL_4 = environ.get('AUTH_CHANNEL_4', '-1003210900437') # Naye channel ka ID daalein
+AUTH_CHANNEL_4 = int(AUTH_CHANNEL_4) if AUTH_CHANNEL_4 and id_pattern.search(AUTH_CHANNEL_4) else None
+AUTH_CHANNEL_4_TEXT = environ.get('AUTH_CHANNEL_4_TEXT', '✅ Touch me') # Button ka text
+# --- YAHAN TAK ---
 
 SUPPORT_GROUP = int(environ.get('SUPPORT_GROUP', '-1003115990357'))
 
