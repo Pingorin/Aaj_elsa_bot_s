@@ -606,8 +606,10 @@ async def advantage_spoll_choker(bot, query):
             await query.message.reply_to_message.delete()
         except:
             pass
-
-@Client.on_callback_query()
+# This filter will match any callback *NOT* starting with "index"
+async def filter_non_index_callbacks(_, __, query):
+    return not query.data.startswith("index")            
+@Client.on_callback_query(filters.create(filter_non_index_callbacks))
 async def cb_handler(client: Client, query: CallbackQuery):
     if query.data == "close_data":
         try:
