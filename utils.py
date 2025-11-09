@@ -282,7 +282,7 @@ def list_to_str(k):
     else:
         return ', '.join(f'{elem}, ' for elem in k)
 
-# --- YEH HAI AAPKE 'get_shortlink' FUNCTION KA SAHI FIX ---
+#--- YEH HAI AAPKE 'get_shortlink' FUNCTION KA NAYA AUR SAHI FIX ---
 async def get_shortlink(link, grp_id, is_second_shortener=False):
     settings = await get_settings(grp_id)    
     if not IS_VERIFY:
@@ -297,23 +297,32 @@ async def get_shortlink(link, grp_id, is_second_shortener=False):
         
     # Link ko encode karein taaki special characters (?) error na dein
     encoded_link = urllib.parse.quote(link)
-
-    try:
-        # --- YEH HAI ASLI FIX ---
-        # 1. 'Shortzy' ko 'api' aur 'site' ke saath initialize karein
-        shortzy = Shortzy(api, site)
-        
-        # 2. 'get_quick_link' method ka istemaal karein
-        link = await shortzy.get_quick_link(encoded_link)
-        
-        # --- FIX KHATAM ---
     
-    except Exception as e:
-        logger.error(f"Shortzy error: {e}")
-        # Agar koi error aaye, toh original link hi bhej dein
-        return link
+    # --- YEH HAI ASLI FIX: Hum 'shortzy' library ka istemaal nahi karenge ---
+    # Hum 'commands.py' ki tarah direct API call karenge
+    
+    api_url = f"https://{site}/api?api={api}&url={encoded_link}"
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url) as resp:
+                if resp.status != 200:
+                    logger.error(f"Shortener HTTP Error {resp.status} for {site}")
+                    return link # API fail hui, original link return karo
+                
+                data = await resp.json()
+        
+        if data.get('status') == 'success':
+            return data['shortenedUrl']
+        else:
+            # softurl.in 'message' bhejta hai, doosre 'msg' bhej sakte hain
+            error_message = data.get('message', data.get('msg', 'Unknown API error'))
+            logger.error(f"Shortener API Error: {error_message} for {site}")
+            return link # API ne error diya, original link return karo
             
-    return link
+    except Exception as e:
+        logger.error(f"Aiohttp error in get_shortlink: {e}")
+        return link # Koi aur error, original link return karo
 # --- 'get_shortlink' FIX KHATAM ---
 
 
