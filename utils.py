@@ -345,7 +345,7 @@ def get_hash(media_msg: Message) -> str:
 
 def get_status():
     # (Yeh function poora waise hi rahega, koi badlaav nahi)
-    tz = pytz.timezone('Asia.js')
+    tz = pytz.timezone('Asia/Kolkata')
     hour = datetime.now(tz).time().hour
     if 5 <= hour < 12:
         sts = "ɢᴏᴏᴅ ᴍᴏʀɴɪɴɢ"
