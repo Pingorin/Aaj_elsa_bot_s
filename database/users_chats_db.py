@@ -36,7 +36,6 @@ class Database:
         self.ref_links = mydb.referral_links
         self.referrals = mydb.referrals
         
-        # --- YEH COLLECTION WAPAS ADD KAREIN ---
         self.join_requests = mydb.join_requests
 
     def new_user(self, id, name):
@@ -56,7 +55,6 @@ class Database:
             return chat.get('settings', self.default)
         return self.default
 
-    # --- YEH 5 FUNCTIONS WAPAS ADD KAREIN ---
     async def add_join_request(self, user_id, chat_id):
         """User ko pending request list mein add karta hai"""
         await self.join_requests.update_one(
@@ -84,7 +82,6 @@ class Database:
     async def del_join_req(self):
         """Alias for clear_all_join_requests() for compatibility with Join_req.py"""
         await self.clear_all_join_requests()
-    # --- YAHAN TAK ADD KAREIN ---
 
     def new_group(self, id, title):
         return dict(
@@ -169,7 +166,6 @@ class Database:
                 "last_verified": datetime.datetime(2020, 5, 17, 0, 0, 0, tzinfo=ist_timezone),
                 "second_time_verified": datetime.datetime(2019, 5, 17, 0, 0, 0, tzinfo=ist_timezone),
             }
-            # FIX: insert_one does not return the document, so we just insert and return res
             await self.misc.insert_one(res)
             return res
         return user
@@ -193,58 +189,67 @@ class Database:
         pastDate = pastDate.astimezone(ist_timezone)
         current_time = datetime.datetime.now(tz=ist_timezone)
         
-        # Purana 24-hour (midnight) wala logic hata diya gaya hai
         time_diff = current_time - pastDate
         total_seconds = time_diff.total_seconds()
         
-        # Ab yeh check karega ki user ne 'time_gap_seconds' ke andar verify kiya hai ya nahi
         if time_gap_seconds == 0:
              return False # Hamesha verification maangega agar time 0 hai
 
         return total_seconds <= time_gap_seconds
     # --- FIX KHATAM ---
 
-    async def user_verified(self, user_id):
+    # --- YEH HAI NAYA FUNCTION (Link 2 ke liye) ---
+    async def is_user_verified_second(self, user_id, time_gap_seconds):
         user = await self.get_notcopy_user(user_id)
         try:
             pastDate = user["second_time_verified"]
         except Exception:
             user = await self.get_notcopy_user(user_id)
             pastDate = user["second_time_verified"]
+            
         ist_timezone = pytz.timezone('Asia/Kolkata')
         pastDate = pastDate.astimezone(ist_timezone)
         current_time = datetime.datetime.now(tz=ist_timezone)
-        seconds_since_midnight = (current_time - datetime.datetime(current_time.year, current_time.month, current_time.day, 0, 0, 0, tzinfo=ist_timezone)).total_seconds()
+        
         time_diff = current_time - pastDate
         total_seconds = time_diff.total_seconds()
-        return total_seconds <= seconds_since_midnight
+        
+        if time_gap_seconds == 0:
+             return False
+        return total_seconds <= time_gap_seconds
+    # --- FUNCTION KHATAM ---
+    
+    # --- YEH PURANA FUNCTION (user_verified) HATA DIYA GAYA HAI ---
 
-    # --- YEH HAI AAPKA DOOSRA FIX ---
+    # --- YEH HAI AAPKA DOOSRA FIX (Updated logic) ---
     async def use_second_shortener(self, user_id, time): # 'time' yahan 'verify_gap_seconds' hai
         user = await self.get_notcopy_user(user_id)
         if not user.get("second_time_verified"):
-            ist_timezone = pytz.timezone('Asia/KKolkata')
+            ist_timezone = pytz.timezone('Asia/Kolkata') # <-- TYPO FIX KIYA
             await self.update_notcopy_user(user_id, {"second_time_verified":datetime.datetime(2019, 5, 17, 0, 0, 0, tzinfo=ist_timezone)})
             user = await self.get_notcopy_user(user_id)
         
-        # 'is_user_verified' ko custom time ke saath call karein
-        if await self.is_user_verified(user_id, time):
-            try:
-                pastDate = user["last_verified"]
-            except Exception:
-                user = await self.get_notcopy_user(user_id)
-                pastDate = user["last_verified"]
-            ist_timezone = pytz.timezone('Asia/Kolkata')
-            pastDate = pastDate.astimezone(ist_timezone)
-            current_time = datetime.datetime.now(tz=ist_timezone)
-            time_difference = current_time - pastDate
-            
-            # Yahan bhi custom 'time' (seconds mein) ka istemaal karein
-            if time_difference > datetime.timedelta(seconds=time):
-                pastDate = user["last_verified"].astimezone(ist_timezone)
-                second_time = user["second_time_verified"].astimezone(ist_timezone)
-                return second_time < pastDate
-        return False
+        # Logic: Show Link 2 if Link 1 was used last and *both* are expired.
+        
+        is_link_1_valid = await self.is_user_verified(user_id, time)
+        is_link_2_valid = await self.is_user_verified_second(user_id, time)
+
+        if is_link_1_valid or is_link_2_valid:
+            # User verified hai (koi ek link active hai). Koi link mat dikhao.
+            return False
+
+        # Agar hum yahan hain, matlab *dono* links expired hain.
+        # Ab check karo ki kaunsa link aakhri baar use hua tha.
+        try:
+            if user["last_verified"] > user["second_time_verified"]:
+                # Link 1 (last_verified) aakhri baar use hua tha. Isliye ab Link 2 dikhao.
+                return True
+            else:
+                # Link 2 (second_time_verified) aakhri baar use hua tha. Isliye ab Link 1 dikhao.
+                return False
+        except Exception:
+             # Agar koi timestamp missing hai, toh default Link 1 dikhao
+             return False
     # --- FIX KHATAM ---
    
     async def create_verify_id(self, user_id: int, hash):
