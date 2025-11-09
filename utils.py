@@ -282,7 +282,7 @@ def list_to_str(k):
     else:
         return ', '.join(f'{elem}, ' for elem in k)
 
-# --- YEH HAI AAPKE 'get_shortlink' FUNCTION KA FIX (SHORTZY KE SAATH) ---
+# --- YEH HAI AAPKE 'get_shortlink' FUNCTION KA NAYA AUR SAHI FIX ---
 async def get_shortlink(link, grp_id, is_second_shortener=False):
     settings = await get_settings(grp_id)    
     if not IS_VERIFY:
@@ -295,26 +295,24 @@ async def get_shortlink(link, grp_id, is_second_shortener=False):
         logger.warning(f"Shortener API/Site (is_second: {is_second_shortener}) settings nahi mili.")
         return link
         
-    # --- YEH HAI ASLI FIX ---
     # Link ko encode karein taaki special characters (?) error na dein
     encoded_link = urllib.parse.quote(link)
-    # --- FIX KHATAM ---
 
     try:
-        # Ab Shortzy ko site ka poora path (jaise shortxlinks.com/st) bhejenge
-        # Humne yeh 'info.py' ya '/set_shortner' mein set kiya hai
-        shortzy = Shortzy(api, site)
+        # --- YEH HAI ASLI FIX ---
         
-        # Encoded link ko short karein
-        link = await shortzy.shorten(encoded_link)
+        # 1. Link ko 'Shortzy' object banate waqt hi pass karein
+        shortzy = Shortzy(api, site, encoded_link)
+        
+        # 2. Ab 'shorten()' ko bina kisi argument ke call karein
+        link = await shortzy.shorten()
+        
+        # --- FIX KHATAM ---
+
     except Exception as e:
         logger.error(f"Shortzy error: {e}")
-        try:
-            # Fallback mein bhi encoded link istemaal karein
-            link = await shortzy.get_quick_link(encoded_link)
-        except Exception as e2:
-            logger.error(f"Shortzy fallback error: {e2}")
-            return link # Agar dono fail ho, toh original link return karo
+        # Error aane par original link hi bhej dein.
+        return link 
             
     return link
 # --- 'get_shortlink' FIX KHATAM ---
@@ -345,7 +343,7 @@ def get_hash(media_msg: Message) -> str:
 
 def get_status():
     # (Yeh function poora waise hi rahega, koi badlaav nahi)
-    tz = pytz.timezone('Asia/Kolkata')
+    tz = pytz.timezone('Asia/Kolkata') # <-- 'Asia.js' ko 'Asia/Kolkata' kiya
     hour = datetime.now(tz).time().hour
     if 5 <= hour < 12:
         sts = "ɢᴏᴏᴅ ᴍᴏʀɴɪɴɢ"
