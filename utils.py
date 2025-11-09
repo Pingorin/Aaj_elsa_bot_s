@@ -282,7 +282,7 @@ def list_to_str(k):
     else:
         return ', '.join(f'{elem}, ' for elem in k)
 
-# --- YEH HAI AAPKE 'get_shortlink' FUNCTION KA NAYA AUR SAHI FIX ---
+# --- YEH HAI AAPKE 'get_shortlink' FUNCTION KA SAHI FIX ---
 async def get_shortlink(link, grp_id, is_second_shortener=False):
     settings = await get_settings(grp_id)    
     if not IS_VERIFY:
@@ -300,22 +300,22 @@ async def get_shortlink(link, grp_id, is_second_shortener=False):
 
     try:
         # --- YEH HAI ASLI FIX ---
+        # 1. 'Shortzy' ko 'api' aur 'site' ke saath initialize karein
+        shortzy = Shortzy(api, site)
         
-        # 1. Link ko 'Shortzy' object banate waqt hi pass karein
-        shortzy = Shortzy(api, site, encoded_link)
-        
-        # 2. Ab 'shorten()' ko bina kisi argument ke call karein
-        link = await shortzy.shorten()
+        # 2. 'get_quick_link' method ka istemaal karein
+        link = await shortzy.get_quick_link(encoded_link)
         
         # --- FIX KHATAM ---
-
+    
     except Exception as e:
         logger.error(f"Shortzy error: {e}")
-        # Error aane par original link hi bhej dein.
-        return link 
+        # Agar koi error aaye, toh original link hi bhej dein
+        return link
             
     return link
 # --- 'get_shortlink' FIX KHATAM ---
+
 
 def get_file_id(message: "Message") -> Any:
     # (Yeh function poora waise hi rahega, koi badlaav nahi)
@@ -343,14 +343,14 @@ def get_hash(media_msg: Message) -> str:
 
 def get_status():
     # (Yeh function poora waise hi rahega, koi badlaav nahi)
-    tz = pytz.timezone('Asia/Kolkata') # <-- 'Asia.js' ko 'Asia/Kolkata' kiya
+    tz = pytz.timezone('Asia/Kolkata')
     hour = datetime.now(tz).time().hour
     if 5 <= hour < 12:
-        sts = "ɢᴏᴏᴅ ᴍᴏʀɴɪɴɢ"
+        sts = "ɢᴏᴏᴅ ᴍᴏʀɴɪNɢ"
     elif 12 <= hour < 18:
-        sts = "ɢᴏᴏᴅ ᴀꜰᴛᴇʀɴᴏᴏɴ"
+        sts = "ɢᴏᴏᴅ ᴀꜰᴛᴇʀɴᴏᴏN"
     else:
-        sts = "ɢᴏᴏᴅ ᴇᴠᴇɴɪɴɢ"
+        sts = "ɢᴏᴏᴅ ᴇᴠᴇNɪNɢ"
     return sts
 
 async def is_check_admin(bot, chat_id, user_id):
