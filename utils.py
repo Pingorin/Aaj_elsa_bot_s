@@ -1,4 +1,5 @@
 import logging
+import urllib.parse  # <-- YEH IMPORT ZAROORI HAI
 from pyrogram.errors import InputUserDeactivated, UserNotParticipant, FloodWait, UserIsBlocked, PeerIdInvalid
 # --- Sabhi 4 channels imported hain ---
 from info import (
@@ -13,11 +14,11 @@ import pytz
 import time
 import re
 import os 
-from shortzy import Shortzy # (Ise rakha gaya hai, lekin 'get_shortlink' mein istemaal nahi hoga)
+from shortzy import Shortzy # (Aapki request ke mutaabik rakha gaya hai)
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from database.users_chats_db import db
-import aiohttp # <-- YEH IMPORT ZAROORI HAI
+import aiohttp # (Ise rehne dein, yeh doosre functions mein kaam aa sakta hai)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -281,50 +282,42 @@ def list_to_str(k):
     else:
         return ', '.join(f'{elem}, ' for elem in k)
 
-# --- YEH HAI AAPKE 'get_shortlink' FUNCTION KA FIX ---
+# --- YEH HAI AAPKE 'get_shortlink' FUNCTION KA FIX (SHORTZY KE SAATH) ---
 async def get_shortlink(link, grp_id, is_second_shortener=False):
     settings = await get_settings(grp_id)    
     if not IS_VERIFY:
-        return link  # Agar verify off hai, toh original link return karo
+        return link # Agar verify off hai, toh original link return karo
         
     api_key, site_key = ('api_two', 'shortner_two') if is_second_shortener else ('api', 'shortner')
-    api, site = settings[api_key], settings[site_key]
+    api, site = settings[api_key], settings[site_key]        
     
     if not api or not site:
         logger.warning(f"Shortener API/Site (is_second: {is_second_shortener}) settings nahi mili.")
         return link
-
-    # Aapke screenshot (shortxlinks.com/st) ke hisaab se endpoint check karein
-    if "shortxlinks.com" in site:
-        api_endpoint = "st"
-    else:
-        api_endpoint = "api" # Baaki sabke liye default
         
+    # --- YEH HAI ASLI FIX ---
+    # Link ko encode karein taaki special characters (?) error na dein
+    encoded_link = urllib.parse.quote(link)
+    # --- FIX KHATAM ---
+
     try:
-        # Sahi API request URL banayein
-        request_url = f"https://{site}/{api_endpoint}?api={api}&url={link}"
+        # Ab Shortzy ko site ka poora path (jaise shortxlinks.com/st) bhejenge
+        # Humne yeh 'info.py' ya '/set_shortner' mein set kiya hai
+        shortzy = Shortzy(api, site)
         
-        # API ko call karein
-        async with aiohttp.ClientSession() as session:
-            async with session.get(request_url) as resp:
-                if resp.status != 200:
-                    logger.error(f"Shortener API Error (HTTP {resp.status}): {await resp.text()}")
-                    return link # Fail hone par original link return karo
-
-                data = await resp.json()
-                
-                # Sahi short link nikaalein
-                if data.get("status") == "success" and data.get("shortenedUrl"):
-                    return data["shortenedUrl"] # YEH HAI SAHI SHORT LINK
-                else:
-                    logger.error(f"Shortener API ne error diya: {data.get('message', 'Unknown error')}")
-                    return link # Fail hone par original link
-
+        # Encoded link ko short karein
+        link = await shortzy.shorten(encoded_link)
     except Exception as e:
-        logger.error(f"get_shortlink function mein error: {e}")
-        return link # Fail hone par original link
+        logger.error(f"Shortzy error: {e}")
+        try:
+            # Fallback mein bhi encoded link istemaal karein
+            link = await shortzy.get_quick_link(encoded_link)
+        except Exception as e2:
+            logger.error(f"Shortzy fallback error: {e2}")
+            return link # Agar dono fail ho, toh original link return karo
+            
+    return link
 # --- 'get_shortlink' FIX KHATAM ---
-
 
 def get_file_id(message: "Message") -> Any:
     # (Yeh function poora waise hi rahega, koi badlaav nahi)
