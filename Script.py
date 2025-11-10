@@ -13,28 +13,39 @@ class script(object):
 
 ɴᴏᴛᴇ - ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴡᴏʀᴋ ɪɴ ʙᴏᴛʜ ɢʀᴏᴜᴘs ᴀɴᴅ ʙᴏᴛ ᴘᴍ</b>"""
  
-    STATUS_TXT = """<b><u>🗃 ᴅᴀᴛᴀʙᴀsᴇ 1 🗃</u>
+    STATUS_TXT = """<b>📊 ʙᴏᴛ ꜱᴛᴀᴛɪꜱᴛɪᴄꜱ 📊</b>
+    
+<b><u>USERS & GROUPS</u></b>
+<b>⚃ ᴛᴏᴛᴀʟ ᴜꜱᴇʀꜱ:</b> <code>{0}</code>
+<b>⚃ ᴛᴏᴛᴀʟ ɢʀᴏᴜᴘꜱ:</b> <code>{1}</code>
 
-» ᴛᴏᴛᴀʟ ᴜsᴇʀs - <code>{}</code>
-» ᴛᴏᴛᴀʟ ɢʀᴏᴜᴘs - <code>{}</code>
-» ᴜsᴇᴅ sᴛᴏʀᴀɢᴇ - <code>{} / {}</code>
+<b><u>MAIN BOT DATABASE (DB URI)</u></b>
+<b>🗂️ ᴅʙ ꜱɪᴢᴇ:</b> <code>{2}</code>
+<b>⚡️ ᴅʙ ꜰʀᴇᴇ:</b> <code>{3}</code>
 
-<u>🗳 ᴅᴀᴛᴀʙᴀsᴇ 2 🗳</u></b>
+<b><u>FILE DATABASES (STATS)</u></b>
 
-» ᴛᴏᴛᴀʟ ꜰɪʟᴇs - <code>{}</code>
-» ᴜsᴇᴅ sᴛᴏʀᴀɢᴇ - <code>{} / {}</code>
+<b>Primary DB 1 (DB URI)</b>
+<b>📁 ꜰɪʟᴇꜱ:</b> <code>{4}</code>
+<b>🗂️ ꜱɪᴢᴇ:</b> <code>{5}</code>
 
-<u>🤖 ʙᴏᴛ ᴅᴇᴛᴀɪʟs 🤖</u>
+<b>Secondary DB 2 (DB URI 2)</b>
+<b>📁 ꜰɪʟᴇꜱ:</b> <code>{6}</code>
+<b>🗂️ ꜱɪᴢᴇ:</b> <code>{7}</code>
 
-» ᴜᴘᴛɪᴍᴇ - <code>{}</code>
-» ʀᴀᴍ - <code>{}%</code>
-» ᴄᴘᴜ - <code>{}%</code></b>"""
+<b>Third DB 3 (DB URI 3)</b>
+<b>📁 ꜰɪʟᴇꜱ:</b> <code>{8}</code>
+<b>🗂️ ꜱɪᴢᴇ:</b> <code>{9}</code>
 
-    NEW_USER_TXT = """<b>#New_User {}
+<b>Fourth DB 4 (DB URI 4)</b>
+<b>📁 ꜰɪʟᴇꜱ:</b> <code>{10}</code>
+<b>🗂️ ꜱɪᴢᴇ:</b> <code>{11}</code>
 
-≈ ɪᴅ:- <code>{}</code>
-≈ ɴᴀᴍᴇ:- {}</b>"""
-
+<b><u>SYSTEM STATS</u></b>
+<b>💫 ᴜᴘᴛɪᴍᴇ:</b> <code>{12}</code>
+<b>🧭 ʀᴀᴍ ᴜꜱᴀɢᴇ:</b> <code>{13}%</code>
+<b>🛰️ ᴄᴘᴜ ᴜꜱᴀɢᴇ:</b> <code>{14}%</code>
+"""
     NEW_GROUP_TXT = """#New_Group {}
 
 Group name - {}
