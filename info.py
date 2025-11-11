@@ -49,6 +49,10 @@ SHORTENER_API = environ.get("SHORTENER_API", "")
 SHORTENER_WEBSITE = environ.get("SHORTENER_WEBSITE", "")
 SHORTENER_API2 = environ.get("SHORTENER_API2", "")
 SHORTENER_WEBSITE2 = environ.get("SHORTENER_WEBSITE2", "")
+# --- YEH NAYA ADD KAREIN (V3) ---
+SHORTENER_API3 = environ.get("SHORTENER_API3", "")
+SHORTENER_WEBSITE3 = environ.get("SHORTENER_WEBSITE3", "")
+# --- BADLAAV KHATAM ---
 TWO_VERIFY_GAP = int(environ.get('TWO_VERIFY_GAP', "0"))
 # --- YEH NAYI LINE ADD KAREIN ---
 # (24 ghante = 86400 seconds)
