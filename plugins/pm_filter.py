@@ -1374,5 +1374,3 @@ async def advantage_spell_chok(message):
         await message.delete()
     except:
         pass
-
-Update Pm_filter.py
