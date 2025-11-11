@@ -46,6 +46,8 @@ class script(object):
 <b>🧭 ʀᴀᴍ ᴜꜱᴀɢᴇ:</b> <code>{13}%</code>
 <b>🛰️ ᴄᴘᴜ ᴜꜱᴀɢᴇ:</b> <code>{14}%</code>
 """
+    NEW_USER_TXT = "#NewUser 👤\n\n<b>Bot:</b> {}\n<b>User ID:</b> <code>{}</code>\n<b>User:</b> {}"
+    
     NEW_GROUP_TXT = """#New_Group {}
 
 Group name - {}
