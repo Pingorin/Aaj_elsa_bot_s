@@ -49,7 +49,7 @@ SHORTENER_API = environ.get("SHORTENER_API", "")
 SHORTENER_WEBSITE = environ.get("SHORTENER_WEBSITE", "")
 SHORTENER_API2 = environ.get("SHORTENER_API2", "")
 SHORTENER_WEBSITE2 = environ.get("SHORTENER_WEBSITE2", "")
-TWO_VERIFY_GAP = int(environ.get('TWO_VERIFY_GAP', "0")
+TWO_VERIFY_GAP = int(environ.get('TWO_VERIFY_GAP', "0"))
 # DEFAULT_VERIFY_EXPIRY: Default access time granted after one successful verification (24 hours)
 # NOTE: User can change this using /set_verify_time command.
 DEFAULT_VERIFY_EXPIRY = 86400 # 24 hours 
