@@ -201,6 +201,19 @@ You have currently invited **{current_count}** / {target} users.
 
 💶 ꜱᴇɴᴅ /plan ᴛᴏ ʙᴜʏ ꜱᴜʙꜱᴄʀɪᴘᴛɪᴏɴ</b>"""
 
+    VERIFY_COMPLETE_V1_IMMEDIATE_V2 = """
+✨ **Verification Step 1 Complete!** ✨
+
+Welcome back, {user_mention}.
+
+Aapki file turant bhej di gayi hai (Short Access).
+
+🛑 **Long Access ke liye Important:**
+Kripya turant **Verification Link 2 (V2)** poora karein.
+
+Long-term Free Access ($/set\_verify\_time$ se set kiya gaya) sirf **V2** complete hone par hi shuru hoga.
+"""
+
     VERIFIED_LOG_TEXT = """<b><u>☄ ᴜsᴇʀ ᴠᴇʀɪꜰɪᴇᴅ sᴜᴄᴄᴇssꜰᴜʟʟʏ ☄</u>
 
 ⚡️ ɴᴀᴍᴇ:- {} [ <code>{}</code> ] 
