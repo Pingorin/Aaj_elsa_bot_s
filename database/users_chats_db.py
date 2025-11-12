@@ -1,7 +1,14 @@
 import datetime
 import pytz
 from motor.motor_asyncio import AsyncIOMotorClient
-from info import IS_VERIFY, LINK_MODE, FILE_CAPTION, TUTORIAL, DATABASE_NAME, DATABASE_URI, DATABASE_URI2, IMDB, IMDB_TEMPLATE, PROTECT_CONTENT, AUTO_DELETE, SPELL_CHECK, AUTO_FILTER, LOG_VR_CHANNEL, SHORTENER_WEBSITE, SHORTENER_API, SHORTENER_WEBSITE2, SHORTENER_API2, TWO_VERIFY_GAP
+from info import (
+    IS_VERIFY, LINK_MODE, FILE_CAPTION, TUTORIAL, DATABASE_NAME, 
+    DATABASE_URI, DATABASE_URI2, IMDB, IMDB_TEMPLATE, PROTECT_CONTENT, 
+    AUTO_DELETE, SPELL_CHECK, AUTO_FILTER, LOG_VR_CHANNEL, 
+    SHORTENER_WEBSITE, SHORTENER_API, SHORTENER_WEBSITE2, 
+    SHORTENER_API2, TWO_VERIFY_GAP, 
+    DEFAULT_VERIFY_EXPIRY # <-- NAYA VARIABLE YAHAN IMPORT KIYA GAYA HAI
+)
 
 client = AsyncIOMotorClient(DATABASE_URI)
 mydb = client[DATABASE_NAME]
@@ -23,7 +30,7 @@ class Database:
             'imdb': IMDB,
             'link': LINK_MODE, 
             'is_verify': IS_VERIFY, 
-            'verify_time': TWO_VERIFY_GAP
+            'verify_time': DEFAULT_VERIFY_EXPIRY # <-- FIX: Verification time ki default value ab DEFAULT_VERIFY_EXPIRY hai
     }
     
     def __init__(self):
