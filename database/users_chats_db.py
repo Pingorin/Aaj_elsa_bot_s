@@ -216,7 +216,7 @@ class Database:
         try:
             pastDate = user["second_time_verified"]
         except Exception:
-            user = await self.get_notcopy_user(userid)
+            user = await self.get_notcopy_user(user_id) # Typo 'userid' fixed to 'user_id'
             pastDate = user["second_time_verified"]
             
         ist_timezone = pytz.timezone('Asia/Kolkata')
@@ -279,8 +279,10 @@ class Database:
                 # Link 2 kab expire hua tha
                 link_2_expiry_time = last_verified_2 + datetime.timedelta(seconds=duration_seconds)
                 
-                # 'gap' kab poora hoga
-                gap_expiry_time = link_2_expiry_time + datetime.timedelta(seconds=duration_seconds)
+                # --- YEH HAI FIX ---
+                # 'gap' kab poora hoga (yahan 'duration_seconds' ki jagah 'gap_seconds' aayega)
+                gap_expiry_time = link_2_expiry_time + datetime.timedelta(seconds=gap_seconds)
+                # --- FIX KHATAM ---
 
                 if current_time > gap_expiry_time:
                     # Gap poora ho gaya hai. Link 1 dikhao.
