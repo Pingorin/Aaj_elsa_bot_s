@@ -50,7 +50,8 @@ SHORTENER_WEBSITE = environ.get("SHORTENER_WEBSITE", "")
 SHORTENER_API2 = environ.get("SHORTENER_API2", "")
 SHORTENER_WEBSITE2 = environ.get("SHORTENER_WEBSITE2", "")
 TWO_VERIFY_GAP = int(environ.get('TWO_VERIFY_GAP', "0"))
-
+# Default time ke liye verification valid rahega (24 hours)
+DEFAULT_VERIFY_DURATION = 86400 
 # languages search
 LANGUAGES = ["hindi", "english", "telugu", "tamil", "kannada", "malayalam"]
 
