@@ -54,8 +54,8 @@ TWO_VERIFY_GAP = int(environ.get('TWO_VERIFY_GAP', "0"))
 DEFAULT_VERIFY_DURATION = 86400 
 # languages search
 # --- Verification 3 Settings ---
-SHORTENER_WEBSITE3 = "https://shortener-v3.com"
-SHORTENER_API3 = "YOUR_API_KEY_3"
+SHORTENER_WEBSITE3 = ""
+SHORTENER_API3 = ""
 # Default gap time (in seconds) between V2 and V3 (e.g., 5 minutes)
 THIRD_VERIFY_GAP = 300 
 
