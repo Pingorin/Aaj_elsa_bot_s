@@ -170,15 +170,7 @@ You have currently invited **{current_count}** / {target} users.
 
 💶 ꜱᴇɴᴅ /plan ᴛᴏ ʙᴜʏ ꜱᴜʙꜱᴄʀɪᴘᴛɪᴏɴ</b>"""
 
-    VERIFY_COMPLETE_TEXT = """<b>ʜᴇʏ {},
-
-ʏᴏᴜ ʜᴀᴠᴇ ᴄᴏᴍᴘʟᴇᴛᴇᴅ ᴛʜᴇ 1st ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ...
-
-ɴᴏᴡ ʏᴏᴜ ʜᴀᴠᴇ ᴜɴʟɪᴍɪᴛᴇᴅ ᴀᴄᴄᴇss ɴᴇxᴛ <code>{}</code> ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ...
-
-ɪғ ʏᴏᴜ ᴡᴀɴᴛ ᴅɪʀᴇᴄᴛ ғɪʟᴇꜱ ᴡɪᴛʜᴏᴜᴛ ᴀɴʏ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴꜱ ᴛʜᴇɴ ʙᴜʏ ʙᴏᴛ ꜱᴜʙꜱᴄʀɪᴘᴛɪᴏɴ ☺️
-
-💶 ꜱᴇɴᴅ /plan ᴛᴏ ʙᴜʏ ꜱᴜʙꜱᴄʀɪᴘᴛɪᴏɴ</b>"""
+    VERIFY_COMPLETE_TEXT = "<b>✅ Step 1/3 Successful! ✅</b>\n\nHey {0}!\nAapne pehla step (V1) pura kar liya hai."
 
     SECOND_VERIFICATION_TEXT = """<b>ʜᴇʏ {} {},
 
@@ -191,16 +183,8 @@ You have currently invited **{current_count}** / {target} users.
 
 💶 ꜱᴇɴᴅ /plan ᴛᴏ ʙᴜʏ ꜱᴜʙꜱᴄʀɪᴘᴛɪᴏɴ</b>"""
 
-    SECOND_VERIFY_COMPLETE_TEXT = """<b>ʜᴇʏ {},
-
-🤩 ʏᴏᴜ ʜᴀᴠᴇ ᴄᴏᴍᴘʟᴇᴛᴇᴅ ᴛʜᴇ ᴀʟʟ ᴠᴇʀɪꜰɪᴄᴀᴛɪᴏɴ...
-
-ɴᴏᴡ ʏᴏᴜ ʜᴀᴠᴇ ᴜɴʟɪᴍɪᴛᴇᴅ ᴀᴄᴄᴇss ꜰᴏʀ ᴏɴᴇ ᴅᴀʏꜱ...
-
-ɪғ ʏᴏᴜ ᴡᴀɴᴛ ᴅɪʀᴇᴄᴛ ғɪʟᴇꜱ ᴡɪᴛʜᴏᴜᴛ ᴀɴʏ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴꜱ ᴛʜᴇɴ ʙᴜʏ ʙᴏᴛ ꜱᴜʙꜱᴄʀɪᴘᴛɪᴏɴ ☺️
-
-💶 ꜱᴇɴᴅ /plan ᴛᴏ ʙᴜʏ ꜱᴜʙꜱᴄʀɪᴘᴛɪᴏɴ</b>"""
-
+    SECOND_VERIFY_COMPLETE_TEXT = "<b>✅ Step 2/3 Successful! ✅</b>\n\nHey {0}!\nAapne doosra step (V2) pura kar liya hai."
+    THIRD_VERIFICATION_TEXT = "<b>✅ 3rd Verification Successful! ✅</b>\n\nHey {0}!\nAapne aakhri step (V3) pura kar liya hai."
     VERIFIED_LOG_TEXT = """<b><u>☄ ᴜsᴇʀ ᴠᴇʀɪꜰɪᴇᴅ sᴜᴄᴄᴇssꜰᴜʟʟʏ ☄</u>
 
 ⚡️ ɴᴀᴍᴇ:- {} [ <code>{}</code> ] 
