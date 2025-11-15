@@ -184,7 +184,17 @@ You have currently invited **{current_count}** / {target} users.
 💶 ꜱᴇɴᴅ /plan ᴛᴏ ʙᴜʏ ꜱᴜʙꜱᴄʀɪᴘᴛɪᴏɴ</b>"""
 
     SECOND_VERIFY_COMPLETE_TEXT = "<b>✅ Step 2/3 Successful! ✅</b>\n\nHey {0}!\nAapne doosra step (V2) pura kar liya hai."
-    THIRD_VERIFICATION_TEXT = "<b>✅ 3rd Verification Successful! ✅</b>\n\nHey {0}!\nAapne aakhri step (V3) pura kar liya hai."
+    THIRD_VERIFICATION_TEXT = """<b>HEY {0} {1},
+
+<u>YOU ARE NOT VERIFIED</u> ‼️
+TAP ON THE VERIFY LINK AND GET UNLIMITED ACCESS FOR TODAY. 🫡
+
+#VERIFICATION:- 3/3
+
+IF YOU WANT DIRECT FILES WITHOUT ANY VERIFICATIONS THEN BUY BOT SUBSCRIPTION 😉
+
+[💵 SEND /plan TO BUY SUBSCRIPTION 💵]</b>"""
+
     VERIFIED_LOG_TEXT = """<b><u>☄ ᴜsᴇʀ ᴠᴇʀɪꜰɪᴇᴅ sᴜᴄᴄᴇssꜰᴜʟʟʏ ☄</u>
 
 ⚡️ ɴᴀᴍᴇ:- {} [ <code>{}</code> ] 
