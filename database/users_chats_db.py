@@ -65,7 +65,7 @@ class Database:
 
     async def get_settings(self, id):
         chat = await self.grp.find_one({'id':int(id)})
-        settings = self.default
+        settings = self.default.copy()
         if chat:
             chat_settings = chat.get('settings')
             if chat_settings:
