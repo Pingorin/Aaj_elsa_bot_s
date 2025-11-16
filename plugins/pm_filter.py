@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__) # <-- FIX: Added logger initialization
 
 # --- ⚠️ IMPORTANT ⚠️ ---
 # EDIT THIS VARIABLE WITH YOUR BOT 2'S USERNAME (without @)
-BOT_2_USERNAME = "Your_Bot_2_Username_Here"
+BOT_2_USERNAME = "File_Store_Mov_bot"
 # -------------------------
 
 BUTTONS = {}
