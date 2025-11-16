@@ -45,7 +45,7 @@ COLLECTION_NAME = environ.get('COLLECTION_NAME', '') # Bot 2 wala naam
 
 # --- Verification System (Not Needed for Bot 1) ---
 IS_VERIFY = is_enabled('IS_VERIFY', False) # Bot 1 verify nahi karega
-# LOG_VR_CHANNEL = int(environ.get('LOG_VR_CHANNEL', ''))
+LOG_VR_CHANNEL = int(environ.get('LOG_VR_CHANNEL', '-1003179051423'))
 TUTORIAL = environ.get("TUTORIAL", "https://t.me/how_to_dwnload_mov") # "How to Download" button
 # VERIFY_IMG = environ.get("VERIFY_IMG", "")
 # SHORTENER_API = environ.get("SHORTENER_API", "")
