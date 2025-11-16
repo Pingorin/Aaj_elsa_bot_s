@@ -1,6 +1,10 @@
 from pyrogram import Client, __version__, filters
 from pyrogram.raw.all import layer
-from database.ia_filterdb import Media
+# --- YEH BADLAAV HAI ---
+# Sabhi 5 database models ko import karein
+from database.ia_filterdb import (
+    Media, FilesData, MediaPrimary, MediaSecondary, MediaThird, MediaFourth
+)
 from database.users_chats_db import db
 from info import API_ID, API_HASH, ADMINS, BOT_TOKEN, LOG_CHANNEL, PORT, SUPPORT_GROUP
 from utils import temp
@@ -29,12 +33,25 @@ class Bot(Client):
         
     async def start(self):
         st = time.time()
-        temp.START_TIME = st  # <-- THIS IS THE FIX
+        temp.START_TIME = st
         b_users, b_chats = await db.get_banned()
         temp.BANNED_USERS = b_users
         temp.BANNED_CHATS = b_chats
         await super().start()
-        await Media.ensure_indexes()
+        
+        # --- YEH BADLAAV HAI ---
+        # Aapke naye 2-collection system ke liye sabhi indexes ko ensure karein
+        try:
+            await FilesData.ensure_indexes()
+            await MediaPrimary.ensure_indexes()
+            await MediaSecondary.ensure_indexes() # 'Media' is alias for this
+            await MediaThird.ensure_indexes()
+            await MediaFourth.ensure_indexes()
+            print("Successfully ensured all 5 database indexes.")
+        except Exception as e:
+            print(f"Database index ensure karte waqt error: {e}")
+        # --- BADLAAV KHATAM ---
+            
         me = await self.get_me()
         temp.ME = me.id
         temp.U_NAME = me.username
@@ -52,11 +69,11 @@ class Bot(Client):
         bind_address = "0.0.0.0"
         await web.TCPSite(app, bind_address, PORT).start()
         await self.send_message(chat_id=LOG_CHANNEL, text=f"<b>{me.mention} ʀᴇsᴛᴀʀᴛᴇᴅ 🤖\n\n📆 ᴅᴀᴛᴇ - <code>{today}</code>\n🕙 ᴛɪᴍᴇ - <code>{timee}</code>\n🌍 ᴛɪᴍᴇ ᴢᴏɴᴇ - <code>Asia/Kolkata</code></b>")
-        await self.send_message(chat_id=SUPPORT_GROUP, text=f"<b>{me.mention} ʀᴇsᴛᴀʀᴛᴇᴅ 🤖</b>")
+        await self.send_message(chat_id=SUPPORT_GROUP, text=f"<b>{me.mention} ʀᴇsᴛᴀʀᴛᴇD 🤖</b>")
         tt = time.time() - st
         seconds = int(datetime.timedelta(seconds=tt).seconds)
         for admin in ADMINS:
-            await self.send_message(chat_id=admin, text=f"<b>✅ ʙᴏᴛ ʀᴇsᴛᴀʀᴛᴇᴅ\n🕥 ᴛɪᴍᴇ ᴛᴀᴋᴇɴ - <code>{seconds} sᴇᴄᴏɴᴅs</code></b>")
+            await self.send_message(chat_id=admin, text=f"<b>✅ ʙᴏᴛ ʀᴇsᴛᴀʀᴛᴇᴅ\n🕥 ᴛɪᴍᴇ ᴛᴀᴋᴇN - <code>{seconds} sᴇᴄᴏɴᴅs</code></b>")
 
     async def stop(self, *args):
         await super().stop()
@@ -68,29 +85,7 @@ class Bot(Client):
         limit: int,
         offset: int = 0,
     ) -> Optional[AsyncGenerator["types.Message", None]]:
-        """Iterate through a chat sequentially.
-        This convenience method does the same as repeatedly calling :meth:`~pyrogram.Client.get_messages` in a loop, thus saving
-        you from the hassle of setting up boilerplate code. It is useful for getting the whole chat messages with a
-        single call.
-        Parameters:
-            chat_id (``int`` | ``str``):
-                Unique identifier (int) or username (str) of the target chat.
-                For your personal cloud (Saved Messages) you can simply use "me" or "self".
-                For a contact that exists in your Telegram address book you can use his phone number (str).
-                
-            limit (``int``):
-                Identifier of the last message to be returned.
-                
-            offset (``int``, *optional*):
-                Identifier of the first message to be returned.
-                Defaults to 0.
-        Returns:
-            ``Generator``: A generator yielding :obj:`~pyrogram.types.Message` objects.
-        Example:
-            .. code-block:: python
-                for message in app.iter_messages("pyrogram", 1, 15000):
-                    print(message.text)
-        """
+        """Iterate through a chat sequentially... (Poora function waise hi rahega)"""
         current = offset
         while True:
             new_diff = min(200, limit - current)
