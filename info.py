@@ -27,12 +27,12 @@ USERNAME = environ.get('USERNAME', 'https://t.me/ramSitaam')
 LOG_CHANNEL = int(environ.get('LOG_CHANNEL', '-1003163434752'))
 MOVIE_GROUP_LINK = environ.get('MOVIE_GROUP_LINK', 'https://t.me/+7vxlanrMnWw4N2Fl')
 CHANNELS = [int(ch) if id_pattern.search(ch) else ch for ch in environ.get('CHANNELS', '-1002990033841').split()]
-DATABASE_URI = environ.get('DATABASE_URI', "")
-DATABASE_URI2 = environ.get('DATABASE_URI2', "")
-DATABASE_URI3 = environ.get('DATABASE_URI3', "") # <-- YEH NAYI LINE ADD KAREIN 
-DATABASE_URI4 = environ.get('DATABASE_URI4', "") # <-- YEH NAYI LINE ADD KAREIN
-DATABASE_NAME = environ.get('DATABASE_NAME', "")
-COLLECTION_NAME = environ.get('COLLECTION_NAME', '')
+DATABASE_URI = environ.get('DATABASE_URI', "mongodb+srv://Mango5:Mango5@aks2-primary.659ojvs.mongodb.net/?retryWrites=true&w=majority")
+DATABASE_URI2 = environ.get('DATABASE_URI2', "mongodb+srv://Rose2:Rose2@aks2-secondary.iybhqc8.mongodb.net/")
+DATABASE_URI3 = environ.get('DATABASE_URI3', "mongodb+srv://Catz3:Catz3@naina.qvugkka.mongodb.net/") # <-- YEH NAYI LINE ADD KAREIN 
+DATABASE_URI4 = environ.get('DATABASE_URI4', "mongodb+srv://Rosaa12:Rosaa12@rosaa.xhqyqcs.mongodb.net/") # <-- YEH NAYI LINE ADD KAREIN
+DATABASE_NAME = environ.get('DATABASE_NAME', "mydatabase")
+COLLECTION_NAME = environ.get('COLLECTION_NAME', 'TG_files_movie')
 LOG_API_CHANNEL = int(environ.get('LOG_API_CHANNEL', '-1003173384552'))
 QR_CODE = environ.get('QR_CODE', 'https://i.ibb.co/ycnxb1CB/x.jpg')
 
@@ -45,17 +45,17 @@ IS_VERIFY = is_enabled('IS_VERIFY', True)
 LOG_VR_CHANNEL = int(environ.get('LOG_VR_CHANNEL', '-1003179051423'))
 TUTORIAL = environ.get("TUTORIAL", "https://t.me/how_to_dwnload_mov")
 VERIFY_IMG = environ.get("VERIFY_IMG", "https://graph.org/file/1669ab9af68eaa62c3ca4.jpg")
-SHORTENER_API = environ.get("SHORTENER_API", "")
-SHORTENER_WEBSITE = environ.get("SHORTENER_WEBSITE", "")
-SHORTENER_API2 = environ.get("SHORTENER_API2", "")
-SHORTENER_WEBSITE2 = environ.get("SHORTENER_WEBSITE2", "")
+SHORTENER_API = environ.get("SHORTENER_API", "613ce973446725bfe2bf909b320c7a1e84c4bdc8")
+SHORTENER_WEBSITE = environ.get("SHORTENER_WEBSITE", "softurl.in")
+SHORTENER_API2 = environ.get("SHORTENER_API2", "b68a9657e3370f9716db63b3942056513cf90c6c")
+SHORTENER_WEBSITE2 = environ.get("SHORTENER_WEBSITE2", "shortxlinks.com")
 TWO_VERIFY_GAP = int(environ.get('TWO_VERIFY_GAP', "0"))
 # Default time ke liye verification valid rahega (24 hours)
 DEFAULT_VERIFY_DURATION = 86400 
 # languages search
 # --- Verification 3 Settings ---
-SHORTENER_WEBSITE3 = ""
-SHORTENER_API3 = ""
+SHORTENER_WEBSITE3 = "7c480930494be0edb7e546125c35d79840d5146b"
+SHORTENER_API3 = "shortxlinks.com"
 # Default gap time (in seconds) between V2 and V3 (e.g., 5 minutes)
 THIRD_VERIFY_GAP = 300 
 
