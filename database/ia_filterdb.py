@@ -105,7 +105,6 @@ mydb = mydb_secondary
 
 async def get_files_db_size():
     try:
-        # Yeh abhi bhi sirf secondary DB ka size dikhayega (jaisa pehle tha)
         return (await mydb_secondary.command("dbstats"))['dataSize']
     except Exception:
         return 0 
@@ -123,7 +122,8 @@ async def get_all_files_db_stats():
     
     for db_key, (MediaClass, mydb_instance) in all_dbs.items():
         try:
-            count = await MediaClass.count_documents()
+            # FIX: count_documents({}) with empty filter is required in newer motor/pymongo
+            count = await MediaClass.count_documents({})
             size = (await mydb_instance.command("dbstats"))['dataSize']
             stats[f'{db_key}_files'] = count
             stats[f'{db_key}_size'] = size
@@ -144,7 +144,6 @@ async def save_file(media, db_choice='secondary'):
     # Logic: Save karne se pehle check karo
     try:
         if db_choice == 'fourth':
-            # Agar DB 4 mein save kar rahe hain, toh 1, 2, aur 3 mein check karo
             if await MediaPrimary.find_one({'_id': file_id}) or \
                await MediaSecondary.find_one({'_id': file_id}) or \
                await MediaThird.find_one({'_id': file_id}):
@@ -152,19 +151,15 @@ async def save_file(media, db_choice='secondary'):
                 return 'dup'
                 
         elif db_choice == 'third':
-            # Agar DB 3 mein save kar rahe hain, toh 1 aur 2 mein check karo
             if await MediaPrimary.find_one({'_id': file_id}) or await MediaSecondary.find_one({'_id': file_id}):
                 logger.warning(f'{getattr(media, "file_name", "NO_FILE")} pehle se DB 1 ya 2 mein hai. DB 3 mein skip kar raha hoon.')
                 return 'dup'
         
         elif db_choice == 'secondary':
-            # Agar DB 2 mein save kar rahe hain, toh 1 mein check karo
             if await MediaPrimary.find_one({'_id': file_id}):
                 logger.warning(f'{getattr(media, "file_name", "NO_FILE")} pehle se DB 1 mein hai. DB 2 mein skip kar raha hoon.')
                 return 'dup' 
         
-        # db_choice == 'primary' ke liye koi check zaroori nahi hai
-            
     except Exception as e:
         logger.error(f"Duplicate check karte waqt error: {e}")
         pass 
