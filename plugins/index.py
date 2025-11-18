@@ -71,7 +71,6 @@ async def send_for_index(bot, message):
     except:
         return await message.reply("Number is invalid.")
     
-    # --- NAYA FIX: 4 Database selection buttons ---
     buttons = [[
         InlineKeyboardButton('📥 Index to Primary DB 1', callback_data=f'index#yes#primary#{chat_id}#{last_msg_id}#{skip}')
     ],[
@@ -127,7 +126,8 @@ async def index_files_to_db(lst_msg_id, chat, msg, bot, skip, db_choice):
                 time_taken = get_readable_time(time.time()-start_time)
                 if temp.CANCEL:
                     temp.CANCEL = False
-                    await msg.edit(f"Successfully Cancelled!\nCompleted in {time_taken}\n\nSaved <code>{total_files}</code> files to Database: `{db_choice}`!\nDuplicate Files Skipped: G<code>{duplicate}</code>\nDeleted Messages Skipped: Example: <code>/set_verify_time 12 hours</code>{deleted}</code>\nNon-Media messages skipped: <code>{no_media + unsupported}</code>\nUnsupported Media: <code>{unsupported}</code>\nErrors Occurred: <code>{errors}</code>")
+                    # STRING FIXED HERE
+                    await msg.edit(f"Successfully Cancelled!\nCompleted in {time_taken}\n\nSaved <code>{total_files}</code> files to Database: `{db_choice}`!\nDuplicate Files Skipped: <code>{duplicate}</code>\nDeleted Messages Skipped: <code>{deleted}</code>\nNon-Media messages skipped: <code>{no_media + unsupported}</code>\nUnsupported Media: <code>{unsupported}</code>\nErrors Occurred: <code>{errors}</code>")
                     return
                 current += 1
                 if current % 30 == 0:
