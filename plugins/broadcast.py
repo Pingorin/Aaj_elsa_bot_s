@@ -40,8 +40,6 @@ async def broadcast_users(bot, message):
     start_time = time.time()
     total_users = await db.total_users_count()
     done = 0
-    blocked = 0
-    deleted = 0
     failed = 0
     success = 0
 
@@ -105,4 +103,3 @@ async def broadcast_group(bot, message):
                 ]]
                 await b_sts.edit(f"Groups groadcast in progress...\n\nTotal Groups: <code>{total_chats}</code>\nCompleted: <code>{done} / {total_chats}</code>\nSuccess: <code>{success}</code>\nFailed: <code>{failed}</code>", reply_markup=InlineKeyboardMarkup(btn))    
         await b_sts.edit(f"Groups broadcast completed.\nCompleted in {time_taken}\n\nTotal Groups: <code>{total_chats}</code>\nCompleted: <code>{done} / {total_chats}</code>\nSuccess: <code>{success}</code>\nFailed: <code>{failed}</code>")
-
