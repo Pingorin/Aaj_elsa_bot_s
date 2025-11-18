@@ -3,7 +3,6 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram.errors.exceptions.bad_request_400 import MessageTooLong
 from info import ADMINS, LOG_CHANNEL, USERNAME
 from database.users_chats_db import db
-# --- YEH HAI IMPORT MEIN BADLAAV ---
 from database.ia_filterdb import Media, get_all_files_db_stats
 from utils import get_size, temp
 from Script import script
@@ -56,7 +55,6 @@ async def leave_a_chat(bot, message):
         reply_markup=InlineKeyboardMarkup(btn)
         await bot.send_message(
             chat_id=chat,
-            # --- YEH HAI HTML FIX ---
             text=f'😞 ʜᴇʟʟᴏ ᴅᴇᴀʀ,\nᴍʏ ᴏᴡɴᴇʀ ʜᴀꜱ ᴛᴏʟᴅ ᴍᴇ ᴛᴏ ʟᴇᴀᴠᴇ ꜰʀᴏᴍ ɢʀᴏᴜᴘ ꜱᴏ ɪ ɢᴏ 😔\n\n🚫 ʀᴇᴀꜱᴏɴ ɪꜱ - <code>{reason}</code>\n\nɪꜰ ʏᴏᴜ ɴᴇᴇᴅ ᴛᴏ ᴀᴅᴅ ᴍᴇ ᴀɢᴀɪɴ ᴛʜᴇɴ ᴄᴏɴᴛᴀᴄᴛ ᴍʏ ᴏᴡɴᴇʀ 👇',
             reply_markup=reply_markup,
         )
@@ -80,7 +78,6 @@ async def groups_list(bot, message):
             out += '\n\n'
             count += 1
         except Exception:
-            # Group exist nahi karta ya bot kicked hai
             pass
     try:
         if count > 1:
@@ -92,18 +89,15 @@ async def groups_list(bot, message):
             outfile.write(out)
         await message.reply_document('chats.txt', caption="<b>List of all groups</b>")
 
-# --- YEH HAI POORA NAYA `get_ststs` FUNCTION ---
 @Client.on_message(filters.command('stats') & filters.user(ADMINS) & filters.incoming)
 async def get_ststs(bot, message):
     users = await db.total_users_count()
     groups = await db.total_chat_count()
-    size = get_size(await db.get_db_size()) # Main DB Size (from users_chats_db)
-    free = get_size(536870912) # Hardcoded free space
+    size = get_size(await db.get_db_size())
+    free = get_size(536870912)
     
-    # Chaaron File DB se stats fetch karein
     db_stats = await get_all_files_db_stats()
     
-    # Har size ko readable banayein
     db1_size_str = get_size(db_stats.get('db1_size', 0))
     db2_size_str = get_size(db_stats.get('db2_size', 0))
     db3_size_str = get_size(db_stats.get('db3_size', 0))
@@ -118,7 +112,6 @@ async def get_ststs(bot, message):
     ram = psutil.virtual_memory().percent
     cpu = psutil.cpu_percent()
     
-    # Naya format call (15 arguments)
     await message.reply_text(script.STATUS_TXT.format(
         users, 
         groups, 
