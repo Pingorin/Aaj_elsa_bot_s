@@ -7,9 +7,9 @@ from info import (
     AUTO_FILTER, LOG_VR_CHANNEL, 
     SHORTENER_WEBSITE, SHORTENER_API, 
     SHORTENER_WEBSITE2, SHORTENER_API2, 
-    SHORTENER_WEBSITE3, SHORTENER_API3, # <-- Naya V3 import
-    TWO_VERIFY_GAP, # Default Gap 1
-    THIRD_VERIFY_GAP, # <-- Naya Gap 2 import
+    SHORTENER_WEBSITE3, SHORTENER_API3, 
+    TWO_VERIFY_GAP, 
+    THIRD_VERIFY_GAP, 
     DEFAULT_VERIFY_DURATION
 )
 
@@ -29,15 +29,15 @@ class Database:
             'api': SHORTENER_API,
             'shortner_two': SHORTENER_WEBSITE2, # V2
             'api_two': SHORTENER_API2,
-            'shortner_three': SHORTENER_WEBSITE3, # <-- Naya V3
+            'shortner_three': SHORTENER_WEBSITE3, # V3
             'api_three': SHORTENER_API3,
             'log': LOG_VR_CHANNEL,
             'imdb': IMDB,
             'link': LINK_MODE, 
             'is_verify': IS_VERIFY, 
-            'verify_time': DEFAULT_VERIFY_DURATION, # Full access (V3 ke baad)
-            'verify_gap_1': TWO_VERIFY_GAP, # Gap 1 (V1 ke baad)
-            'verify_gap_2': THIRD_VERIFY_GAP # <-- Naya Gap 2 (V2 ke baad)
+            'verify_time': DEFAULT_VERIFY_DURATION, 
+            'verify_gap_1': TWO_VERIFY_GAP, 
+            'verify_gap_2': THIRD_VERIFY_GAP 
     }
     
     def __init__(self):
@@ -50,6 +50,7 @@ class Database:
         self.ref_links = mydb.referral_links
         self.referrals = mydb.referrals
         
+        # New Collection for Join Requests
         self.join_requests = mydb.join_requests
 
     def new_user(self, id, name):
@@ -69,31 +70,34 @@ class Database:
         if chat:
             chat_settings = chat.get('settings')
             if chat_settings:
-                # Purani settings ko naye defaults ke saath merge karo
                 settings.update(chat_settings)
         
-        # Ensure all keys exist, agar user ki settings purani hai
         for key, value in self.default.items():
             if key not in settings:
                 settings[key] = value
                 
         return settings
 
+    # --- JOIN REQUEST LOGIC START ---
     async def add_join_request(self, user_id, chat_id):
+        # Insert or Update the request with timestamp
         await self.join_requests.update_one(
-            {'user_id': user_id, 'chat_id': chat_id},
+            {'user_id': int(user_id), 'chat_id': int(chat_id)},
             {'$set': {'timestamp': datetime.datetime.now(pytz.utc)}},
             upsert=True
         )
 
     async def is_join_request_pending(self, user_id, chat_id):
-        return bool(await self.join_requests.find_one(
-            {'user_id': user_id, 'chat_id': chat_id}
-        ))
+        # Check if a document exists for this user and chat
+        result = await self.join_requests.find_one(
+            {'user_id': int(user_id), 'chat_id': int(chat_id)}
+        )
+        return bool(result)
 
     async def remove_join_request(self, user_id, chat_id):
+        # Remove from DB when user is approved/declined/leaves
         await self.join_requests.delete_one(
-            {'user_id': user_id, 'chat_id': chat_id}
+            {'user_id': int(user_id), 'chat_id': int(chat_id)}
         )
     
     async def clear_all_join_requests(self):
@@ -101,6 +105,7 @@ class Database:
 
     async def del_join_req(self):
         await self.clear_all_join_requests()
+    # --- JOIN REQUEST LOGIC END ---
 
     def new_group(self, id, title):
         return dict(
@@ -181,13 +186,13 @@ class Database:
             old_time = datetime.datetime(2019, 5, 17, 0, 0, 0, tzinfo=ist_timezone)
             res = {
                 "user_id": user_id,
-                "last_verified": old_time, # V1
-                "second_time_verified": old_time, # V2
-                "third_time_verified": old_time, # <-- Naya V3 timestamp
+                "last_verified": old_time, 
+                "second_time_verified": old_time, 
+                "third_time_verified": old_time, 
             }
             await self.misc.insert_one(res)
             return res
-        # Ensure 'third_time_verified' exists for old users
+        
         if 'third_time_verified' not in user:
             old_time = datetime.datetime(2019, 5, 17, 0, 0, 0, tzinfo=ist_timezone)
             await self.update_notcopy_user(user_id, {'third_time_verified': old_time})
