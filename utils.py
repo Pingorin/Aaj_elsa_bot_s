@@ -39,79 +39,101 @@ class temp(object):
     USERS_CANCEL = False
     GROUPS_CANCEL = False    
     CHAT = {}
-    FSUB_WAITING = {} # New: Stores state for setting FSub ID in PM
+    FSUB_WAITING = {} # Stores state for setting FSub IDs via PM
 
-# --- INTERNAL HELPER FUNCTIONS ---
+# --- FSUB HELPER FUNCTIONS ---
 
 async def _get_fsub_status(bot, user_id, channel_id):
-    """(Internal) Checks status for 'Advanced' (Request-based) channels."""
+    """
+    Advanced Fsub Check:
+    1. Check API (Member/Admin) -> Return MEMBER
+    2. Check API (Pending/Restricted) -> Return PENDING (Allow access)
+    3. Check Database (Pending Request) -> Return PENDING (Allow access)
+    """
     try:
         member = await bot.get_chat_member(channel_id, user_id)
 
+        # Agar User pehle se Member, Admin ya Owner hai
         if member.status in [enums.ChatMemberStatus.MEMBER, enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]:
             return "MEMBER"
+        
+        # Agar User Banned ya Left hai
         if member.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED]:
+            # DB check karna zaroori hai, kyunki user leave status me ho sakta hai par request pending ho sakti hai
+            if await db.is_join_request_pending(user_id, channel_id):
+                return "PENDING" # DB me request hai, Access de do
             return "NOT_JOINED"
+        
+        # Agar Telegram khud status Restricted/Request dikha raha hai
         if member.status == enums.ChatMemberStatus.RESTRICTED:
-            return "PENDING"
+            return "PENDING" # Access de do
 
     except UserNotParticipant:
+        # User channel me bilkul nahi hai. 
+        # Ab Database check karo ki kya usne request bheji thi?
         if await db.is_join_request_pending(user_id, channel_id):
-            return "PENDING"
+            return "PENDING" # Haan request bheji thi, Access de do
         else:
-            return "NOT_JOINED"
+            return "NOT_JOINED" # Nahi bheji
             
     except Exception as e:
         logger.error(f"Advanced Fsub check error for {channel_id}: {e}")
+        # Fallback: DB check
+        if await db.is_join_request_pending(user_id, channel_id):
+            return "PENDING"
         return "NOT_JOINED"
     
-    return "NOT_JOINED" 
+    return "NOT_JOINED"
 
 async def _get_normal_fsub_status(bot, user_id, channel_id):
-    """(Internal) Checks status for 'Normal' (Join-only) channels."""
+    """(Internal) Ek single 'Normal' channel ka status (sirf member) check karta hai."""
     try:
         member = await bot.get_chat_member(channel_id, user_id)
         
         if member.status in [enums.ChatMemberStatus.MEMBER, enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]:
             return "MEMBER"
         else:
-            return "NOT_JOINED" 
+            return "NOT_JOINED"
             
     except UserNotParticipant:
-        return "NOT_JOINED" 
+        return "NOT_JOINED"
             
     except Exception as e:
         logger.error(f"Normal Fsub check error for {channel_id}: {e}")
         return "NOT_JOINED"
 
-# --- UPDATED FSUB LOGIC ---
-
 async def check_fsub_status(bot, user_id, grp_id=None):
     """
     Checks status for Slot 1, 2 (Advanced) and Slot 3 (Normal).
     Prioritizes Group Settings > Global Settings.
-    Returns: status_1, status_2, status_3, id_1, id_2, id_3
+    Returns: (status1, status2, status3, id1, id2, id3)
     """
-    # 1. Initialize with Defaults (Globals)
+    # Default Globals
     id_1 = AUTH_CHANNEL
     id_2 = AUTH_CHANNEL_2
     id_3 = AUTH_CHANNEL_3
     
-    # 2. Check Group Settings (Override if present)
+    # Agar Group ID mila hai, to DB check karo
     if grp_id:
         settings = await get_settings(grp_id)
         
-        # Fetch from DB, fallback to current value (Global) if not in DB or 0
+        # Safe integer conversion for IDs
         custom_id_1 = settings.get('fsub_id_1')
-        if custom_id_1: id_1 = int(custom_id_1)
+        if custom_id_1:
+            try: id_1 = int(custom_id_1)
+            except: pass
             
         custom_id_2 = settings.get('fsub_id_2')
-        if custom_id_2: id_2 = int(custom_id_2)
+        if custom_id_2:
+            try: id_2 = int(custom_id_2)
+            except: pass
             
         custom_id_3 = settings.get('fsub_id_3')
-        if custom_id_3: id_3 = int(custom_id_3) if str(custom_id_3).lstrip('-').isdigit() else custom_id_3
+        if custom_id_3:
+            # Normal ID can be username string or int
+            id_3 = int(custom_id_3) if str(custom_id_3).lstrip('-').isdigit() else custom_id_3
 
-    # 3. Perform Checks based on determined IDs
+    # Status Check Logic
     status_1 = "MEMBER"
     if id_1:
         status_1 = await _get_fsub_status(bot, user_id, id_1)
@@ -128,25 +150,25 @@ async def check_fsub_status(bot, user_id, grp_id=None):
 
 async def check_fsub_4_status(bot, user_id, grp_id=None):
     """
-    Checks status for Slot 4 (Post-Verify).
-    Prioritizes Group Settings > Global Settings.
-    Returns: status, id_4
+    Checks status for Slot 4 (Post-Verify/Request).
     """
     id_4 = AUTH_CHANNEL_4
     
     if grp_id:
         settings = await get_settings(grp_id)
         custom_id_4 = settings.get('fsub_id_4')
-        if custom_id_4: id_4 = int(custom_id_4)
+        if custom_id_4:
+            try: id_4 = int(custom_id_4)
+            except: pass
         
     if not id_4:
         return "MEMBER", None 
     
+    # Slot 4 is strictly Advanced/Request type
     status = await _get_fsub_status(bot, user_id, id_4)
     return status, id_4
 
-# --- END UPDATED FSUB LOGIC ---
-
+# --- END FSUB HELPERS ---
 
 async def get_poster(query, bulk=False, id=False, file=None):
     if not id:
@@ -300,6 +322,7 @@ def list_to_str(k):
     else:
         return ', '.join(f'{elem}, ' for elem in k)
 
+# --- 3-STEP 'get_shortlink' FUNCTION ---
 async def get_shortlink(link, grp_id, shortener_level: int):
     settings = await get_settings(grp_id)
     
@@ -309,7 +332,7 @@ async def get_shortlink(link, grp_id, shortener_level: int):
     elif shortener_level == 2:
         site = settings.get('shortner_two', SHORTENER_WEBSITE2)
         api = settings.get('api_two', SHORTENER_API2)
-    else: 
+    else: # Default or level 1
         site = settings.get('shortner', SHORTENER_WEBSITE)
         api = settings.get('api', SHORTENER_API)
 
@@ -408,7 +431,7 @@ async def get_seconds(time_string):
         return value * 86400 * 30
     elif unit_lower.startswith('year'): # year
         return value * 86400 * 365
-    elif value == 0 and unit_lower == "": 
+    elif value == 0 and unit_lower == "": # Handle "0"
         return 0
     else:
         return 0 
