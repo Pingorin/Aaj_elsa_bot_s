@@ -1532,3 +1532,244 @@ async def disable_config_menu(client, query, grp_id):
     ]
     
     await query.message.edit(text, reply_markup=InlineKeyboardMarkup(btn))
+    async def auto_filter(client, msg, spoll=False):
+    if not spoll:
+        message = msg
+        search = message.text
+        chat_id = message.chat.id
+        settings = await get_settings(chat_id)
+        files, offset, total_results = await get_search_results(search)
+        if not files:
+            if settings["spell_check"]:
+                return await advantage_spell_chok(msg)
+            return
+        # Get available filters
+        available_qualities = await get_available_qualities(search)
+        available_years = await get_available_years(search)
+    else:
+        settings = await get_settings(msg.message.chat.id)
+        message = msg.message.reply_to_message  # msg will be callback query
+        search, files, offset, total_results = spoll
+        # Get available filters for spoll
+        available_qualities = await get_available_qualities(search)
+        available_years = await get_available_years(search)
+
+    req = message.from_user.id if message.from_user else 0
+    key = f"{message.chat.id}-{message.id}"
+    batch_ids = files
+    temp.FILES_ID[f"{message.chat.id}-{message.id}"] = batch_ids
+    batch_link = f"batchfiles#{message.chat.id}#{message.id}#{message.from_user.id}"
+    
+    temp.CHAT[message.from_user.id] = message.chat.id
+    settings = await get_settings(message.chat.id)
+    del_msg = f"\n\n<b>⚠️ ᴛʜɪs ᴍᴇssᴀɢᴇ ᴡɪʟʟ ʙᴇ ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴀꜰᴛᴇʀ <code>{get_readable_time(DELETE_TIME)}</code> ᴛᴏ ᴀᴠᴏɪᴅ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs</b>" if settings["auto_delete"] else ''
+    links = ""
+    if settings["link"]:
+        btn = []
+        for file_num, file in enumerate(files, start=1):
+            links += f"""<b>\n\n{file_num}. <a href=https://t.me/{temp.U_NAME}?start=file_{message.chat.id}_{file.file_id}>[{get_size(file.file_size)}] {' '.join(filter(lambda x: not x.startswith('[') and not x.startswith('@') and not x.startswith('www.'), file.file_name.split()))}</a></b>"""
+    else:
+        btn = [[InlineKeyboardButton(text=f"🔗 {get_size(file.file_size)}≽ {get_name(file.file_name)}", url=f'https://telegram.dog/{temp.U_NAME}?start=file_{message.chat.id}_{file.file_id}'),]
+               for file in files
+              ]
+    if offset != "":
+        if total_results >= 3:
+            btn.insert(0,[
+                InlineKeyboardButton("♻️ sᴇɴᴅ ᴀʟʟ", callback_data=batch_link),
+                InlineKeyboardButton("🥇ʙᴜʏ🥇", url=f"https://t.me/{temp.U_NAME}?start=buy_premium"),
+                InlineKeyboardButton("📰 ʟᴀɴɢᴜᴀɢᴇs", callback_data=f"languages#{key}#0#{req}")
+            ])
+        else:
+            btn.insert(0,[
+                InlineKeyboardButton("🥇ʙᴜʏ🥇", url=f"https://t.me/{temp.U_NAME}?start=buy_premium"),
+                InlineKeyboardButton("📰 ʟᴀɴɢᴜᴀɢᴇs", callback_data=f"languages#{key}#0#{req}")
+            ])
+    else:
+        if total_results >= 3:
+            btn.insert(0,[
+                InlineKeyboardButton("♻️ sᴇɴᴅ ᴀʟʟ", callback_data=batch_link),
+                InlineKeyboardButton("🥇ʙᴜʏ🥇", url=f"https://t.me/{temp.U_NAME}?start=buy_premium")
+            ])
+        else:
+            btn.insert(0,[
+                InlineKeyboardButton("🥇ʙᴜʏ🥇", url=f"https://t.me/{temp.U_NAME}?start=buy_premium")
+            ])
+    
+    # --- Add Filter Buttons (Quality & Year) ---
+    filter_buttons = []
+    if len(available_qualities) > 1:
+        filter_buttons.append(
+            InlineKeyboardButton("🎞️ Qᴜᴀʟɪᴛʏ", callback_data=f"qualities#{key}#0#{req}")
+        )
+    if len(available_years) > 1:
+        filter_buttons.append(
+            InlineKeyboardButton("📅 Yᴇᴀʀ", callback_data=f"years#{key}#0#{req}")
+        )
+    
+    if filter_buttons:
+        btn.append(filter_buttons)
+
+    # Refer & Earn Button
+    btn.append(
+        [InlineKeyboardButton("💰 ʀᴇꜰᴇʀ & ᴇᴀʀɴ 💰", url=f"https://t.me/{temp.U_NAME}?start=get_referral_{message.chat.id}")]
+    )
+
+    # How to Download Button
+    btn.append(
+        [InlineKeyboardButton("🤔 ʜᴏᴡ ᴛᴏ ᴅᴏᴡɴʟᴏᴀᴅ 🤔", url=settings['tutorial'])]
+    )
+                         
+    if spoll:
+        m = await msg.message.edit(f"<b><code>{search}</code> ɪs ꜰᴏᴜɴᴅ ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ ꜰᴏʀ ꜰɪʟᴇs 📫</b>")
+        await asyncio.sleep(1.2)
+        await m.delete()
+
+    if offset != "":
+        BUTTONS[key] = search
+        req = message.from_user.id if message.from_user else 0
+        btn.append(
+            [InlineKeyboardButton(text=f"1/{math.ceil(int(total_results) / int(MAX_BTN))}", callback_data="pages"),
+             InlineKeyboardButton(text="ɴᴇxᴛ ⪼", callback_data=f"next_{req}_{key}_{offset}")]
+        )
+        key = f"{message.chat.id}-{message.id}"
+        BUTTONS[key] = search
+        req = message.from_user.id if message.from_user else 0
+        try:
+            offset = int(offset) 
+        except:
+            offset = int(MAX_BTN)
+        
+    imdb = await get_poster(search, file=(files[0]).file_name) if settings["imdb"] else None
+    TEMPLATE = settings['template']
+    if imdb:
+        cap = TEMPLATE.format(
+            query=search,
+            title=imdb['title'],
+            votes=imdb['votes'],
+            aka=imdb["aka"],
+            seasons=imdb["seasons"],
+            box_office=imdb['box_office'],
+            localized_title=imdb['localized_title'],
+            kind=imdb['kind'],
+            imdb_id=imdb["imdb_id"],
+            cast=imdb["cast"],
+            runtime=imdb["runtime"],
+            countries=imdb["countries"],
+            certificates=imdb["certificates"],
+            languages=imdb["languages"],
+            director=imdb["director"],
+            writer=imdb["writer"],
+            producer=imdb["producer"],
+            composer=imdb["composer"],
+            cinematographer=imdb["cinematographer"],
+            music_team=imdb["music_team"],
+            distributors=imdb["distributors"],
+            release_date=imdb['release_date'],
+            year=imdb['year'],
+            genres=imdb['genres'],
+            poster=imdb['poster'],
+            plot=imdb['plot'],
+            rating=imdb['rating'],
+            url=imdb['url'],
+            **locals()
+        )
+    else:
+        cap = f"<b>📂 ʜᴇʀᴇ ɪ ꜰᴏᴜɴᴅ ꜰᴏʀ ʏᴏᴜʀ sᴇᴀʀᴄʜ {search}</b>"
+    del_msg = f"\n\n<b>⚠️ ᴛʜɪs ᴍᴇssᴀɢᴇ ᴡɪʟʟ ʙᴇ ᴀᴜᴛᴏ ᴅᴇʟᴇᴛᴇ ᴀꜰᴛᴇʀ <code>{get_readable_time(DELETE_TIME)}</code> ᴛᴏ ᴀᴠᴏɪᴅ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs</b>" if settings["auto_delete"] else ''
+    CAP[key] = cap
+    if imdb and imdb.get('poster'):
+        try:
+            if settings['auto_delete']:
+                k = await message.reply_photo(photo=imdb.get('poster'), caption=cap[:1024] + links + del_msg, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(btn))
+                await asyncio.sleep(DELETE_TIME)
+                await k.delete()
+                try:
+                    await message.delete()
+                except:
+                    pass
+            else:
+                await message.reply_photo(photo=imdb.get('poster'), caption=cap[:1024] + links + del_msg, reply_markup=InlineKeyboardMarkup(btn))                    
+        except (MediaEmpty, PhotoInvalidDimensions, WebpageMediaEmpty):
+            pic = imdb.get('poster')
+            poster = pic.replace('.jpg', "._V1_UX360.jpg")
+            if settings["auto_delete"]:
+                k = await message.reply_photo(photo=poster, caption=cap[:1024] + links + del_msg, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(btn))
+                await asyncio.sleep(DELETE_TIME)
+                await k.delete()
+                try:
+                    await message.delete()
+                except:
+                    pass
+            else:
+                await message.reply_photo(photo=poster, caption=cap[:1024] + links + del_msg, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(btn))
+        except Exception as e:
+            if settings["auto_delete"]:
+                k = await message.reply_text(cap + links + del_msg, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(btn), disable_web_page_preview=True)
+                await asyncio.sleep(DELETE_TIME)
+                await k.delete()
+                try:
+                    await message.delete()
+                except:
+                    pass
+            else:
+                await message.reply_text(cap + links + del_msg, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(btn), disable_web_page_preview=True)
+    else:
+        k=await message.reply_text(text=cap + links + del_msg, disable_web_page_preview=True, parse_mode=enums.ParseMode.HTML, reply_markup=InlineKeyboardMarkup(btn), reply_to_message_id=message.id)
+        if settings['auto_delete']:
+            await asyncio.sleep(DELETE_TIME)
+            await k.delete()
+            try:
+                await message.delete()
+            except:
+                pass
+
+async def advantage_spell_chok(message):
+    mv_id = message.id
+    search = message.text
+    chat_id = message.chat.id
+    settings = await get_settings(chat_id)
+    query = re.sub(
+        r"\b(pl(i|e)*?(s|z+|ease|se|ese|(e+)s(e)?)|((send|snd|giv(e)?|gib)(\sme)?)|movie(s)?|new|latest|br((o|u)h?)*|^h(e|a)?(l)*(o)*|mal(ayalam)?|t(h)?amil|file|that|find|und(o)*|kit(t(i|y)?)?o(w)?|thar(u)?(o)*w?|kittum(o)*|aya(k)*(um(o)*)?|full\smovie|any(one)|with\ssubtitle(s)?)",
+        "", message.text, flags=re.IGNORECASE)
+    RQST = query.strip()
+    query = query.strip() + " movie"
+    try:
+        movies = await get_poster(search, bulk=True)
+    except:
+        k = await message.reply(script.I_CUDNT.format(message.from_user.mention))
+        await asyncio.sleep(60)
+        await k.delete()
+        try:
+            await message.delete()
+        except:
+            pass
+        return
+    if not movies:
+        google = search.replace(" ", "+")
+        button = [[
+            InlineKeyboardButton("🔍 ᴄʜᴇᴄᴋ sᴘᴇʟʟɪɴɢ ᴏɴ ɢᴏᴏɢʟᴇ 🔍", url=f"https://www.google.com/search?q={google}")
+        ]]
+        k = await message.reply_text(text=script.I_CUDNT.format(search), reply_markup=InlineKeyboardMarkup(button))
+        await asyncio.sleep(120)
+        await k.delete()
+        try:
+            await message.delete()
+        except:
+            pass
+        return
+    user = message.from_user.id if message.from_user else 0
+    buttons = [[
+        InlineKeyboardButton(text=movie.get('title'), callback_data=f"spol#{movie.movieID}#{user}")
+    ]
+        for movie in movies
+    ]
+    buttons.append(
+        [InlineKeyboardButton(text="🚫 ᴄʟᴏsᴇ 🚫", callback_data='close_data')]
+    )
+    d = await message.reply_text(text=script.CUDNT_FND.format(message.from_user.mention), reply_markup=InlineKeyboardMarkup(buttons), reply_to_message_id=message.id)
+    await asyncio.sleep(120)
+    await d.delete()
+    try:
+        await message.delete()
+    except:
+        pass
