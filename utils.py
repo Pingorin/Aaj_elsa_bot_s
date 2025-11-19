@@ -40,6 +40,7 @@ class temp(object):
     GROUPS_CANCEL = False    
     CHAT = {}
     FSUB_WAITING = {} # Stores state for setting FSub IDs via PM
+    SHORTENER_WAITING = {} # Stores state for setting Shortener Details via PM
 
 # --- FSUB HELPER FUNCTIONS ---
 
@@ -457,3 +458,23 @@ def get_readable_time(seconds):
         return result_parts[0] 
     
     return "less than a second"
+
+# --- SHORTENER TEST FUNCTION (Added for "Test connected Shorteners") ---
+async def check_shortener_status(site, api):
+    if not site or not api:
+        return "❌ Not Configured"
+    
+    url = f"https://{site}/api?api={api}&url=https://google.com"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=10) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    if data.get('status') == 'success' or data.get('shortenedUrl'):
+                        return "✅ Working"
+                    else:
+                        return f"⚠️ Error: {data.get('message', 'Invalid Response')}"
+                else:
+                    return f"❌ HTTP Error: {resp.status}"
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
