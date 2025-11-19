@@ -37,7 +37,8 @@ class Database:
             'is_verify': IS_VERIFY, 
             'verify_time': DEFAULT_VERIFY_DURATION, 
             'verify_gap_1': TWO_VERIFY_GAP, 
-            'verify_gap_2': THIRD_VERIFY_GAP 
+            'verify_gap_2': THIRD_VERIFY_GAP,
+            'shortener_type': 'dynamic' # <-- New Default Setting
     }
     
     def __init__(self):
