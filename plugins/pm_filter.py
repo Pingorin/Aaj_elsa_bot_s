@@ -1532,7 +1532,7 @@ async def disable_config_menu(client, query, grp_id):
     ]
     
     await query.message.edit(text, reply_markup=InlineKeyboardMarkup(btn))
-    async def auto_filter(client, msg, spoll=False):
+async def auto_filter(client, msg, spoll=False):
     if not spoll:
         message = msg
         search = message.text
