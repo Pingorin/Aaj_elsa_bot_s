@@ -1,11 +1,9 @@
 import logging
-import urllib.parse  # <-- YEH IMPORT ZAROORI HAI
+import urllib.parse
 from pyrogram.errors import InputUserDeactivated, UserNotParticipant, FloodWait, UserIsBlocked, PeerIdInvalid
-# --- Sabhi 4 channels imported hain ---
 from info import (
     AUTH_CHANNEL, AUTH_CHANNEL_2, AUTH_CHANNEL_3, AUTH_CHANNEL_4, 
     LONG_IMDB_DESCRIPTION, IS_VERIFY,
-    # --- V3 ke liye imports ---
     SHORTENER_WEBSITE, SHORTENER_API, 
     SHORTENER_WEBSITE2, SHORTENER_API2, 
     SHORTENER_WEBSITE3, SHORTENER_API3
@@ -18,7 +16,6 @@ import pytz
 import time
 import re
 import os 
-# from shortzy import Shortzy # (Unused import, hata diya gaya)
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from database.users_chats_db import db
@@ -42,12 +39,12 @@ class temp(object):
     USERS_CANCEL = False
     GROUPS_CANCEL = False    
     CHAT = {}
+    FSUB_WAITING = {} # New: Stores state for setting FSub ID in PM
 
-# --- YAHAN SE AAPKA FSUB CODE SHURU HOTA HAI ---
-# (Yeh poora code block sahi hai)
+# --- INTERNAL HELPER FUNCTIONS ---
 
 async def _get_fsub_status(bot, user_id, channel_id):
-    """(Internal) Ek single 'Advanced' channel ka status check karta hai (API + DB)."""
+    """(Internal) Checks status for 'Advanced' (Request-based) channels."""
     try:
         member = await bot.get_chat_member(channel_id, user_id)
 
@@ -68,66 +65,90 @@ async def _get_fsub_status(bot, user_id, channel_id):
         logger.error(f"Advanced Fsub check error for {channel_id}: {e}")
         return "NOT_JOINED"
     
-    return "NOT_JOINED" # Fallback
+    return "NOT_JOINED" 
 
 async def _get_normal_fsub_status(bot, user_id, channel_id):
-    """(Internal) Ek single 'Normal' channel ka status (sirf member) check karta hai."""
+    """(Internal) Checks status for 'Normal' (Join-only) channels."""
     try:
         member = await bot.get_chat_member(channel_id, user_id)
         
         if member.status in [enums.ChatMemberStatus.MEMBER, enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]:
             return "MEMBER"
         else:
-            return "NOT_JOINED" # (Left, Banned, etc. sab 'not joined' hain)
+            return "NOT_JOINED" 
             
     except UserNotParticipant:
-        return "NOT_JOINED" # User member nahi hai
+        return "NOT_JOINED" 
             
     except Exception as e:
         logger.error(f"Normal Fsub check error for {channel_id}: {e}")
-        return "NOT_JOINED" # Safety fallback
+        return "NOT_JOINED"
 
-async def check_fsub_status(bot, user_id):
+# --- UPDATED FSUB LOGIC ---
+
+async def check_fsub_status(bot, user_id, grp_id=None):
     """
-    Pehle teen channels (FSub 1, 2, 3) ka status check karta hai.
-    Returns: (status1, status2, status3)
+    Checks status for Slot 1, 2 (Advanced) and Slot 3 (Normal).
+    Prioritizes Group Settings > Global Settings.
+    Returns: status_1, status_2, status_3, id_1, id_2, id_3
     """
+    # 1. Initialize with Defaults (Globals)
+    id_1 = AUTH_CHANNEL
+    id_2 = AUTH_CHANNEL_2
+    id_3 = AUTH_CHANNEL_3
     
-    # Pehla channel (Advanced)
-    if not AUTH_CHANNEL:
-        status_1 = "MEMBER"
-    else:
-        status_1 = await _get_fsub_status(bot, user_id, AUTH_CHANNEL)
-    
-    # Doosra channel (Advanced)
-    if not AUTH_CHANNEL_2:
-        status_2 = "MEMBER"
-    else:
-        status_2 = await _get_fsub_status(bot, user_id, AUTH_CHANNEL_2)
+    # 2. Check Group Settings (Override if present)
+    if grp_id:
+        settings = await get_settings(grp_id)
         
-    # Teesra channel (Normal)
-    if not AUTH_CHANNEL_3:
-        status_3 = "MEMBER"
-    else:
-        status_3 = await _get_normal_fsub_status(bot, user_id, AUTH_CHANNEL_3)
-    
-    return status_1, status_2, status_3
+        # Fetch from DB, fallback to current value (Global) if not in DB or 0
+        custom_id_1 = settings.get('fsub_id_1')
+        if custom_id_1: id_1 = int(custom_id_1)
+            
+        custom_id_2 = settings.get('fsub_id_2')
+        if custom_id_2: id_2 = int(custom_id_2)
+            
+        custom_id_3 = settings.get('fsub_id_3')
+        if custom_id_3: id_3 = int(custom_id_3) if str(custom_id_3).lstrip('-').isdigit() else custom_id_3
 
-async def check_fsub_4_status(bot, user_id):
-    """
-    Sirf chauthe (post-verify) channel ka status check karta hai.
-    Returns: "MEMBER", "PENDING", "NOT_JOINED"
-    """
-    if not AUTH_CHANNEL_4:
-        return "MEMBER" # Agar set nahi hai, toh maan lo joined hai
+    # 3. Perform Checks based on determined IDs
+    status_1 = "MEMBER"
+    if id_1:
+        status_1 = await _get_fsub_status(bot, user_id, id_1)
     
-    # Chautha channel "Advanced" (request) type ka hai
-    return await _get_fsub_status(bot, user_id, AUTH_CHANNEL_4)
-# --- YAHAN FSUB LOGIC KHATAM HOTA HAI ---
+    status_2 = "MEMBER"
+    if id_2:
+        status_2 = await _get_fsub_status(bot, user_id, id_2)
+        
+    status_3 = "MEMBER"
+    if id_3:
+        status_3 = await _get_normal_fsub_status(bot, user_id, id_3)
+    
+    return status_1, status_2, status_3, id_1, id_2, id_3
+
+async def check_fsub_4_status(bot, user_id, grp_id=None):
+    """
+    Checks status for Slot 4 (Post-Verify).
+    Prioritizes Group Settings > Global Settings.
+    Returns: status, id_4
+    """
+    id_4 = AUTH_CHANNEL_4
+    
+    if grp_id:
+        settings = await get_settings(grp_id)
+        custom_id_4 = settings.get('fsub_id_4')
+        if custom_id_4: id_4 = int(custom_id_4)
+        
+    if not id_4:
+        return "MEMBER", None 
+    
+    status = await _get_fsub_status(bot, user_id, id_4)
+    return status, id_4
+
+# --- END UPDATED FSUB LOGIC ---
 
 
 async def get_poster(query, bulk=False, id=False, file=None):
-    # (Yeh function poora waise hi rahega)
     if not id:
         query = (query.strip()).lower()
         title = query
@@ -206,7 +227,6 @@ async def get_poster(query, bulk=False, id=False, file=None):
     }
 
 async def users_broadcast(user_id, message, is_pin):
-    # (Yeh function poora waise hi rahega)
     try:
         m=await message.copy(chat_id=user_id)
         if is_pin:
@@ -231,7 +251,6 @@ async def users_broadcast(user_id, message, is_pin):
         return False, "Error"
 
 async def groups_broadcast(chat_id, message, is_pin):
-    # (Yeh function poora waise hi rahega)
     try:
         m = await message.copy(chat_id=chat_id)
         if is_pin:
@@ -248,7 +267,6 @@ async def groups_broadcast(chat_id, message, is_pin):
         return "Error"
 
 async def get_settings(group_id):
-    # (Yeh function poora waise hi rahega)
     settings = temp.SETTINGS.get(group_id)
     if not settings:
         settings = await db.get_settings(group_id)
@@ -256,14 +274,12 @@ async def get_settings(group_id):
     return settings
     
 async def save_group_settings(group_id, key, value):
-    # (Yeh function poora waise hi rahega)
     current = await get_settings(group_id)
     current.update({key: value})
     temp.SETTINGS.update({group_id: current})
     await db.update_settings(group_id, current)
     
 def get_size(size):
-    # (Yeh function poora waise hi rahega)
     units = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB"]
     size = float(size)
     i = 0
@@ -273,12 +289,10 @@ def get_size(size):
     return "%.2f %s" % (size, units[i])
 
 def get_name(name):
-    # (Yeh function poora waise hi rahega)
     regex = re.sub(r'@\w+', '', name)
     return regex
 
 def list_to_str(k):
-    # (Yeh function poora waise hi rahega)
     if not k:
         return "N/A"
     elif len(k) == 1:
@@ -286,29 +300,23 @@ def list_to_str(k):
     else:
         return ', '.join(f'{elem}, ' for elem in k)
 
-# --- YEH HAI AAPKA NAYA 3-STEP 'get_shortlink' FUNCTION ---
 async def get_shortlink(link, grp_id, shortener_level: int):
     settings = await get_settings(grp_id)
     
-    # Decide karein kaunsa shortener use karna hai
     if shortener_level == 3:
         site = settings.get('shortner_three', SHORTENER_WEBSITE3)
         api = settings.get('api_three', SHORTENER_API3)
     elif shortener_level == 2:
         site = settings.get('shortner_two', SHORTENER_WEBSITE2)
         api = settings.get('api_two', SHORTENER_API2)
-    else: # Default ya shortener_level == 1
+    else: 
         site = settings.get('shortner', SHORTENER_WEBSITE)
         api = settings.get('api', SHORTENER_API)
 
-    # Agar verify off hai ya admin ne shortener set nahi kiya hai
     if not IS_VERIFY or not api or not site:
         return link
 
-    # Link ko encode karein taaki special characters (?) error na dein
     encoded_link = urllib.parse.quote(link)
-    
-    # Direct API call
     api_url = f"https://{site}/api?api={api}&url={encoded_link}"
     
     try:
@@ -316,7 +324,7 @@ async def get_shortlink(link, grp_id, shortener_level: int):
             async with session.get(api_url) as resp:
                 if resp.status != 200:
                     logger.error(f"Shortener (L{shortener_level}) HTTP Error {resp.status} for {site}")
-                    return link # API fail hui, original link return karo
+                    return link 
                 
                 data = await resp.json()
         
@@ -325,16 +333,13 @@ async def get_shortlink(link, grp_id, shortener_level: int):
         else:
             error_message = data.get('message', data.get('msg', 'Unknown API error'))
             logger.error(f"Shortener (L{shortener_level}) API Error: {error_message} for {site}")
-            return link # API ne error diya, original link return karo
+            return link 
             
     except Exception as e:
         logger.error(f"Aiohttp error in get_shortlink (L{shortener_level}): {e}")
-        return link # Koi aur error, original link return karo
-# --- 'get_shortlink' FIX KHATAM ---
-
+        return link 
 
 def get_file_id(message: "Message") -> Any:
-    # (Yeh function poora waise hi rahega)
     media_types = (
         "audio",
         "document",
@@ -353,12 +358,10 @@ def get_file_id(message: "Message") -> Any:
                 return media
 
 def get_hash(media_msg: Message) -> str:
-    # (Yeh function poora waise hi rahega)
     media = get_file_id(media_msg)
     return getattr(media, "file_unique_id", "")[:6]
 
 def get_status():
-    # (Yeh function poora waise hi rahega)
     tz = pytz.timezone('Asia/Kolkata')
     hour = datetime.now(tz).time().hour
     if 5 <= hour < 12:
@@ -370,14 +373,12 @@ def get_status():
     return sts
 
 async def is_check_admin(bot, chat_id, user_id):
-    # (Yeh function poora waise hi rahega)
     try:
         member = await bot.get_chat_member(chat_id, user_id)
         return member.status in [enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]
     except:
         return False
 
-# --- 'get_seconds' FUNCTION ---
 async def get_seconds(time_string):
     def extract_value_and_unit(ts):
         value = ""
@@ -407,12 +408,11 @@ async def get_seconds(time_string):
         return value * 86400 * 30
     elif unit_lower.startswith('year'): # year
         return value * 86400 * 365
-    elif value == 0 and unit_lower == "": # Handle "0"
+    elif value == 0 and unit_lower == "": 
         return 0
     else:
-        return 0 # Invalid format
+        return 0 
 
-# --- 'get_readable_time' FUNCTION ---
 def get_readable_time(seconds):
     if seconds == 0:
         return "0 seconds"
