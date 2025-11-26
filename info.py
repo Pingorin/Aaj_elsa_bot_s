@@ -21,9 +21,9 @@ def is_enabled(value, default):
 #main variables
 API_ID = int(environ.get('API_ID', '20638104'))
 API_HASH = environ.get('API_HASH', '6c884690ca85d39a4c5ad7c15b194e42')
-BOT_TOKEN = environ.get('BOT_TOKEN', '8348689181:AAFj6VO4s6rk5D8HU-tC6oAAgSbRrCD1Se4')
+BOT_TOKEN = environ.get('BOT_TOKEN', '8534644915:AAE4BTnkS6h95AX6napJEKe5l0nCvt_I3NA')
 ADMINS = [int(admin) if id_pattern.search(admin) else admin for admin in environ.get('ADMINS', '7245547751').split()]
-USERNAME = environ.get('USERNAME', 'https://t.me/ramSitm')
+USERNAME = environ.get('USERNAME', 'https://t.me/jain_shabb')
 LOG_CHANNEL = int(environ.get('LOG_CHANNEL', '-1003163434752'))
 MOVIE_GROUP_LINK = environ.get('MOVIE_GROUP_LINK', '')
 CHANNELS = [int(ch) if id_pattern.search(ch) else ch for ch in environ.get('CHANNELS', '-1002990033841').split()]
@@ -31,8 +31,8 @@ DATABASE_URI = environ.get('DATABASE_URI', "mongodb+srv://Mango5:Mango5@aks2-pri
 DATABASE_URI2 = environ.get('DATABASE_URI2', "mongodb+srv://Rose2:Rose2@aks2-secondary.iybhqc8.mongodb.net/")
 DATABASE_URI3 = environ.get('DATABASE_URI3', "mongodb+srv://Catz3:Catz3@naina.qvugkka.mongodb.net/") # <-- YEH NAYI LINE ADD KAREIN 
 DATABASE_URI4 = environ.get('DATABASE_URI4', "mongodb+srv://Rosaa12:Rosaa12@rosaa.xhqyqcs.mongodb.net/") # <-- YEH NAYI LINE ADD KAREIN
-DATABASE_NAME = environ.get('DATABASE_NAME', "mydatabase")
-COLLECTION_NAME = environ.get('COLLECTION_NAME', 'TG_files_movie')
+DATABASE_NAME = environ.get('DATABASE_NAME', "mydatabase1")
+COLLECTION_NAME = environ.get('COLLECTION_NAME', 'Movie_files')
 LOG_API_CHANNEL = int(environ.get('LOG_API_CHANNEL', '-1003173384552'))
 QR_CODE = environ.get('QR_CODE', 'https://i.ibb.co/ycnxb1CB/x.jpg')
 
@@ -108,5 +108,5 @@ SPELL_CHECK = is_enabled('SPELL_CHECK', True)
 LINK_MODE = is_enabled('LINK_MODE', True)
 
 # Add these variables anywhere in your info.py file
-REFERRAL_TARGET = 2  # Number of referrals needed for premium
+REFERRAL_TARGET = 5  # Number of referrals needed for premium
 PREMIUM_MONTH_DURATION = 30 # Days of premium to grant
