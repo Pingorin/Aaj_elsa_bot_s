@@ -41,7 +41,7 @@ BIN_CHANNEL = int(environ.get('BIN_CHANNEL', '-1003173929836'))
 URL = environ.get('URL', '')
 
 # verify system vars
-IS_VERIFY = is_enabled('IS_VERIFY', True)
+IS_VERIFY = is_enabled('IS_VERIFY', False)
 LOG_VR_CHANNEL = int(environ.get('LOG_VR_CHANNEL', '-1003179051423'))
 TUTORIAL = environ.get("TUTORIAL", "https://t.me/how_to_dwnload_mov")
 VERIFY_IMG = environ.get("VERIFY_IMG", "https://graph.org/file/1669ab9af68eaa62c3ca4.jpg")
