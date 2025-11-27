@@ -67,13 +67,13 @@ QUALITIES = ["4K", "2160p", "1080p", "720p", "480p", "360p"]
 auth_channel = environ.get('AUTH_CHANNEL', '-1003105162989')
 AUTH_CHANNEL = int(auth_channel) if auth_channel and id_pattern.search(auth_channel) else None
 
-auth_channel_2 = environ.get('AUTH_CHANNEL_2', '-1003295790341') # Yahan apne doosre channel ka ID daalein
+auth_channel_2 = environ.get('AUTH_CHANNEL_2', '') # Yahan apne doosre channel ka ID daalein
 AUTH_CHANNEL_2 = int(auth_channel_2) if auth_channel_2 and id_pattern.search(auth_channel_2) else None
 
 # --- YEH BADLAAV HAI ---
 # Teesra channel (Normal Fsub)
 # Yahan ID ya @username daalein (jaise: -100123... ya '@mychannel')
-auth_channel_3 = environ.get('AUTH_CHANNEL_3', '-1002954499406') 
+auth_channel_3 = environ.get('AUTH_CHANNEL_3', '') 
 # FIX: ID ko integer mein convert karein agar woh number hai, varna string (jaise @username) rehne dein
 AUTH_CHANNEL_3 = int(auth_channel_3) if auth_channel_3 and id_pattern.search(auth_channel_3) else auth_channel_3
 # AUTH_CHANNEL_3_INVITE_LINK waali line hata di gayi hai.
@@ -81,7 +81,7 @@ AUTH_CHANNEL_3 = int(auth_channel_3) if auth_channel_3 and id_pattern.search(aut
 
 # --- YEH NAYA CHANNEL ADD KAREIN (Post-Verification FSub) ---
 # Yeh channel 'Advanced Fsub' (Request wala) hona chahiye
-AUTH_CHANNEL_4 = environ.get('AUTH_CHANNEL_4', '-1003210900437') # Naye channel ka ID daalein
+AUTH_CHANNEL_4 = environ.get('AUTH_CHANNEL_4', '') # Naye channel ka ID daalein
 AUTH_CHANNEL_4 = int(AUTH_CHANNEL_4) if AUTH_CHANNEL_4 and id_pattern.search(AUTH_CHANNEL_4) else None
 AUTH_CHANNEL_4_TEXT = environ.get('AUTH_CHANNEL_4_TEXT', '✅ Touch me') # Button ka text
 # --- YAHAN TAK ---
