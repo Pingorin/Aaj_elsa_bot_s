@@ -1,474 +1,201 @@
 import logging
-from struct import pack
 import re
-import base64
-from pyrogram.file_id import FileId
-from pymongo.errors import DuplicateKeyError
-from umongo import Instance, Document, fields
 from motor.motor_asyncio import AsyncIOMotorClient
-from marshmallow.exceptions import ValidationError
-# --- FIX: Chaaron database URI import karein ---
-from info import (
-    DATABASE_URI, DATABASE_URI2, DATABASE_URI3, DATABASE_URI4, 
-    DATABASE_NAME, COLLECTION_NAME, MAX_BTN, QUALITIES
-)
+from pymongo.errors import BulkWriteError
+from info import DATABASE_URI, DATABASE_NAME
 
 logger = logging.getLogger(__name__)
 
-# --- Connection 1 (Primary) ---
-client_primary = AsyncIOMotorClient(DATABASE_URI)
-mydb_primary = client_primary[DATABASE_NAME]
-instance_primary = Instance.from_db(mydb_primary)
+class MediaDB:
+    def __init__(self, uri, database_name):
+        # ✅ Connection to DATABASE_URI (Stores Files & Indexes Only)
+        self._client = AsyncIOMotorClient(uri)
+        self.db = self._client[database_name]
+        
+        self.data_col = self.db.files_data   
+        self.search_col = self.db.files_search 
+        self.counters = self.db.counters
 
-# --- Connection 2 (Secondary) ---
-client_secondary = AsyncIOMotorClient(DATABASE_URI2)
-mydb_secondary = client_secondary[DATABASE_NAME]
-instance_secondary = Instance.from_db(mydb_secondary)
+    async def ensure_indexes(self):
+        # Indexes needed for fast search
+        await self.search_col.create_index("file_name")
+        await self.search_col.create_index("caption")
+        await self.search_col.create_index("link_id")
+        await self.data_col.create_index("file_unique_id", unique=True)
 
-# --- Connection 3 (Third) ---
-client_third = AsyncIOMotorClient(DATABASE_URI3)
-mydb_third = client_third[DATABASE_NAME]
-instance_third = Instance.from_db(mydb_third)
+    async def get_next_sequence_value(self, sequence_name, increment=1):
+        doc = await self.counters.find_one_and_update(
+            {"_id": sequence_name},
+            {"$inc": {"sequence_value": increment}}, 
+            upsert=True,
+            return_document=True
+        )
+        return doc["sequence_value"]
 
-# --- NAYA: Connection 4 (Fourth) ---
-client_fourth = AsyncIOMotorClient(DATABASE_URI4)
-mydb_fourth = client_fourth[DATABASE_NAME]
-instance_fourth = Instance.from_db(mydb_fourth)
-
-
-# --- Primary DB ke liye Media class ---
-@instance_primary.register
-class MediaPrimary(Document):
-    file_id = fields.StrField(attribute='_id')
-    file_ref = fields.StrField(allow_none=True)
-    file_name = fields.StrField(required=True)
-    file_size = fields.IntField(required=True)
-    mime_type = fields.StrField(allow_none=True)
-    caption = fields.StrField(allow_none=True)
-    file_type = fields.StrField(allow_none=True)
-
-    class Meta:
-        indexes = ('$file_name', )
-        collection_name = f"{COLLECTION_NAME}_PRIMARY" 
-
-# --- Secondary DB ke liye Media class ---
-@instance_secondary.register
-class MediaSecondary(Document):
-    file_id = fields.StrField(attribute='_id')
-    file_ref = fields.StrField(allow_none=True)
-    file_name = fields.StrField(required=True)
-    file_size = fields.IntField(required=True)
-    mime_type = fields.StrField(allow_none=True)
-    caption = fields.StrField(allow_none=True)
-    file_type = fields.StrField(allow_none=True)
-
-    class Meta:
-        indexes = ('$file_name', )
-        collection_name = COLLECTION_NAME # Default collection
-
-# --- Third DB ke liye Media class ---
-@instance_third.register
-class MediaThird(Document):
-    file_id = fields.StrField(attribute='_id')
-    file_ref = fields.StrField(allow_none=True)
-    file_name = fields.StrField(required=True)
-    file_size = fields.IntField(required=True)
-    mime_type = fields.StrField(allow_none=True)
-    caption = fields.StrField(allow_none=True)
-    file_type = fields.StrField(allow_none=True)
-
-    class Meta:
-        indexes = ('$file_name', )
-        collection_name = f"{COLLECTION_NAME}_THIRD" 
-
-# --- NAYA: Fourth DB ke liye Media class ---
-@instance_fourth.register
-class MediaFourth(Document):
-    file_id = fields.StrField(attribute='_id')
-    file_ref = fields.StrField(allow_none=True)
-    file_name = fields.StrField(required=True)
-    file_size = fields.IntField(required=True)
-    mime_type = fields.StrField(allow_none=True)
-    caption = fields.StrField(allow_none=True)
-    file_type = fields.StrField(allow_none=True)
-
-    class Meta:
-        indexes = ('$file_name', )
-        collection_name = f"{COLLECTION_NAME}_FOURTH" 
-
-
-# --- Compatibility Fix ---
-Media = MediaSecondary
-mydb = mydb_secondary 
-# --- End Compatibility Fix ---
-
-
-async def get_files_db_size():
-    try:
-        return (await mydb_secondary.command("dbstats"))['dataSize']
-    except Exception:
-        return 0 
-
-# --- NAYA: /stats command ke liye ---
-async def get_all_files_db_stats():
-    """Returns stats (file count, db size) for all 4 file databases."""
-    stats = {}
-    all_dbs = {
-        'db1': (MediaPrimary, mydb_primary),
-        'db2': (MediaSecondary, mydb_secondary),
-        'db3': (MediaThird, mydb_third),
-        'db4': (MediaFourth, mydb_fourth)
-    }
-    
-    for db_key, (MediaClass, mydb_instance) in all_dbs.items():
+    async def save_batch(self, items):
+        if not items: return 0, 0 
+        
+        # 1. Deduplication Logic
+        unique_ids = [media.file_unique_id for media, msg in items]
         try:
-            # FIX: count_documents({}) with empty filter is required in newer motor/pymongo
-            count = await MediaClass.count_documents({})
-            size = (await mydb_instance.command("dbstats"))['dataSize']
-            stats[f'{db_key}_files'] = count
-            stats[f'{db_key}_size'] = size
-        except Exception as e:
-            logger.error(f"{db_key} Stats Error: {e}")
-            stats[f'{db_key}_files'] = "N/A"
-            stats[f'{db_key}_size'] = 0
+            existing_docs = await self.data_col.find({
+                "file_unique_id": {"$in": unique_ids}
+            }).to_list(length=len(items))
+            existing_unique_ids = set(doc['file_unique_id'] for doc in existing_docs)
+        except:
+            existing_unique_ids = set()
+
+        new_items = []
+        for media, msg in items:
+            if media.file_unique_id not in existing_unique_ids:
+                new_items.append((media, msg))
+        
+        pre_duplicate_count = len(items) - len(new_items)
+        if not new_items: return 0, pre_duplicate_count 
             
-    return stats
-# --- Stats function khatam ---
+        # 2. Sequence Generation
+        count = len(new_items)
+        end_sequence = await self.get_next_sequence_value("file_id_counter", increment=count)
+        start_sequence = end_sequence - count + 1
+        
+        data_docs = []
+        search_docs = []
+        current_id = start_sequence
+        
+        # 3. Document Preparation
+        for media, message in new_items:
+            def clean_text(text):
+                if not text: return ""
+                text = re.sub(r"\[@RunningMoviesHD\]", "", text, flags=re.IGNORECASE)
+                text = re.sub(r"@\w+", "", text)
+                text = re.sub(r"[-_]", " ", text)
+                return re.sub(r"\s+", " ", text).strip()
 
-# --- NAYA SAVE_FILE LOGIC (4-DB CHECK KE SAATH) ---
-async def save_file(media, db_choice='secondary'):
-    """Save file in the chosen database"""
+            file_name = clean_text(media.file_name)
+            if not file_name: file_name = "Unknown File"
 
-    file_id, file_ref = unpack_new_file_id(media.file_id)
-    
-    # Logic: Save karne se pehle check karo
-    try:
-        if db_choice == 'fourth':
-            if await MediaPrimary.find_one({'_id': file_id}) or \
-               await MediaSecondary.find_one({'_id': file_id}) or \
-               await MediaThird.find_one({'_id': file_id}):
-                logger.warning(f'{getattr(media, "file_name", "NO_FILE")} pehle se DB 1, 2 ya 3 mein hai. DB 4 mein skip kar raha hoon.')
-                return 'dup'
+            caption = message.caption.html if message.caption else None
+            if caption:
+                caption = clean_text(caption)
+                regex = r"(?i)(.*?)(\.mkv|\.mp4|\.avi|\.webm|\.m4v|\.flv)"
+                match = re.search(regex, caption, re.DOTALL)
+                if match:
+                    caption = match.group(1) + match.group(2)
+                    if "<b>" in caption and "</b>" not in caption: caption += "</b>"
+                    if "<i>" in caption and "</i>" not in caption: caption += "</i>"
+
+            data_docs.append({
+                '_id': current_id,
+                'msg_id': message.id,
+                'chat_id': message.chat.id,
+                'file_id': media.file_id,
+                'file_unique_id': media.file_unique_id
+            })
+            
+            search_docs.append({
+                'file_name': file_name,
+                'file_size': media.file_size, 
+                'caption': caption,
+                'link_id': current_id
+            })
+            current_id += 1
+
+        # 4. Insertion Logic
+        saved_count = 0
+        failed_indices = []
+        
+        if data_docs:
+            try:
+                await self.data_col.insert_many(data_docs, ordered=False)
+                saved_count = len(data_docs)
+            except BulkWriteError as bwe:
+                saved_count = bwe.details['nInserted']
+                for error in bwe.details['writeErrors']:
+                    failed_indices.append(error['index'])
+                pre_duplicate_count += len(failed_indices)
+            except Exception as e:
+                logger.error(f"❌ Critical Error Saving FILES_DATA: {e}")
+                return 0, count + pre_duplicate_count
+
+            if saved_count > 0:
+                valid_search_docs = []
+                for i, doc in enumerate(search_docs):
+                    if i not in failed_indices:
+                        valid_search_docs.append(doc)
+                if valid_search_docs:
+                    try:
+                        await self.search_col.insert_many(valid_search_docs, ordered=False)
+                    except Exception as e:
+                        logger.error(f"⚠️ Search Index Error: {e}")
                 
-        elif db_choice == 'third':
-            if await MediaPrimary.find_one({'_id': file_id}) or await MediaSecondary.find_one({'_id': file_id}):
-                logger.warning(f'{getattr(media, "file_name", "NO_FILE")} pehle se DB 1 ya 2 mein hai. DB 3 mein skip kar raha hoon.')
-                return 'dup'
-        
-        elif db_choice == 'secondary':
-            if await MediaPrimary.find_one({'_id': file_id}):
-                logger.warning(f'{getattr(media, "file_name", "NO_FILE")} pehle se DB 1 mein hai. DB 2 mein skip kar raha hoon.')
-                return 'dup' 
-        
-    except Exception as e:
-        logger.error(f"Duplicate check karte waqt error: {e}")
-        pass 
+        return saved_count, pre_duplicate_count
 
-    # Decide karo kaunsi class use karni hai
-    if db_choice == 'primary':
-        MediaClass = MediaPrimary
-    elif db_choice == 'third':
-        MediaClass = MediaThird
-    elif db_choice == 'fourth':
-        MediaClass = MediaFourth
-    else: # 'secondary' ya koi default
-        MediaClass = MediaSecondary
-        
-    file_name = re.sub(r"(_|\-|\.|\+)", " ", str(media.file_name))
-    
-    try:
-        file = MediaClass(
-            file_id=file_id,
-            file_ref=file_ref,
-            file_name=file_name,
-            file_size=media.file_size,
-            mime_type=media.mime_type,
-            caption=media.caption.html if media.caption else None,
-            file_type=media.mime_type.split('/')[0]
-        )
-    except ValidationError:
-        logger.error('File save karte waqt Validation Error')
-        return 'err'
-    else:
+    async def get_file_details(self, link_id):
+        return await self.data_col.find_one({'_id': int(link_id)})
+
+    # 🚀 SEARCH LOGIC (Atlas + Regex Fallback)
+    async def get_search_results(self, query):
         try:
-            await file.commit()
-        except DuplicateKeyError:      
-            logger.warning(f'{getattr(media, "file_name", "NO_FILE")} pehle se {db_choice} database mein hai') 
-            return 'dup'
-        else:
-            logger.info(f'{getattr(media, "file_name", "NO_FILE")} ko {db_choice} database mein save kar diya gaya')
-            return 'suc'
+            words = query.split()
+            
+            if len(words) <= 1:
+                search_stage = {
+                    "$search": {
+                        "index": "default",
+                        "text": {
+                            "query": query,
+                            "path": ["file_name", "caption"],
+                            "fuzzy": {"maxEdits": 2, "prefixLength": 0, "maxExpansions": 50}
+                        }
+                    }
+                }
+            else:
+                must_clauses = []
+                for word in words:
+                    must_clauses.append({
+                        "text": {
+                            "query": word,
+                            "path": ["file_name", "caption"],
+                            "fuzzy": {"maxEdits": 1} 
+                        }
+                    })
+                
+                search_stage = {
+                    "$search": {
+                        "index": "default",
+                        "compound": {
+                            "must": must_clauses 
+                        }
+                    }
+                }
 
-# --- NAYA SEARCH FIX (Chaaron DB mein + Caption Search) ---
-async def get_search_results(query, max_results=MAX_BTN, offset=0, lang=None, quality=None, year=None):
-    query = query.strip()
-    if not query:
-        raw_pattern = '.'
-    elif ' ' not in query:
-        raw_pattern = r'(\b|[\.\+\-_])' + query + r'(\b|[\.\+\-_])'
-    else:
-        raw_pattern = query.replace(' ', r'.*[\s\.\+\-_]') 
-    
-    try:
-        simple_regex = re.compile(raw_pattern, flags=re.IGNORECASE)
-    except:
-        simple_regex = query
-        
-    file_name_regex = simple_regex
-    
-    if quality and year:
-        file_name_regex = re.compile(f"(?=.*{raw_pattern})(?=.*{re.escape(quality)})(?=.*{re.escape(year)})", flags=re.IGNORECASE)
-    elif quality:
-        file_name_regex = re.compile(f"(?=.*{raw_pattern})(?=.*{re.escape(quality)})", flags=re.IGNORECASE)
-    elif year:
-        file_name_regex = re.compile(f"(?=.*{raw_pattern})(?=.*{re.escape(year)})", flags=re.IGNORECASE)
-
-    filter = {
-        '$or': [
-            {'file_name': file_name_regex},
-            {'caption': simple_regex}
-        ]
-    }
-
-    files_primary = files_secondary = files_third = files_fourth = []
-
-    try:
-        files_primary = await MediaPrimary.find(filter).sort('$natural', -1).to_list(length=None)
-    except Exception as e:
-        logger.error(f"Primary DB search error: {e}")
-        
-    try:
-        files_secondary = await MediaSecondary.find(filter).sort('$natural', -1).to_list(length=None)
-    except Exception as e:
-        logger.error(f"Secondary DB search error: {e}")
-        
-    try:
-        files_third = await MediaThird.find(filter).sort('$natural', -1).to_list(length=None)
-    except Exception as e:
-        logger.error(f"Third DB search error: {e}")
-        
-    try:
-        files_fourth = await MediaFourth.find(filter).sort('$natural', -1).to_list(length=None)
-    except Exception as e:
-        logger.error(f"Fourth DB search error: {e}")
-
-    all_files = files_primary + files_secondary + files_third + files_fourth
-    
-    if all_files:
-        unique_files = {}
-        for file in all_files:
-            if file.file_id not in unique_files:
-                unique_files[file.file_id] = file
-        all_files = list(unique_files.values())
-
-    total_results = len(all_files)
-
-    files_to_send = all_files[offset : offset + max_results]
-    
-    next_offset = offset + len(files_to_send)
-    if next_offset >= total_results:
-        next_offset = ''
-        
-    return files_to_send, next_offset, total_results
-    # --- SEARCH FIX KHATAM ---
-    
-async def get_available_qualities(query):
-    query = query.strip()
-    if not query:
-        raw_pattern = '.'
-    elif ' ' not in query:
-        raw_pattern = r'(\b|[\.\+\-_])' + query + r'(\b|[\.\+\-_])'
-    else:
-        raw_pattern = query.replace(' ', r'.*[\s\.\+\-_]')
-    
-    try:
-        regex = re.compile(raw_pattern, flags=re.IGNORECASE)
-    except:
-        regex = query
-
-    filter = {
-        '$or': [
-            {'file_name': regex},
-            {'caption': regex}
-        ]
-    }
-    
-    available_qualities = set()
-    
-    async def check_qualities_in_db(db_class, db_name):
-        try:
-            cursor = db_class.find(filter).limit(200) 
-            async for file in cursor:
-                text_to_check = (file.file_name + " " + (file.caption or "")).lower()
-                for quality in QUALITIES:
-                    if re.search(r'\b' + re.escape(quality.lower()) + r'\b', text_to_check) or \
-                       (quality.endswith('p') and quality.lower() in text_to_check):
-                        available_qualities.add(quality)
+            pipeline = [search_stage, {"$limit": 10}]
+            cursor = self.search_col.aggregate(pipeline)
+            files = await cursor.to_list(length=10)
+            return files
+            
         except Exception as e:
-            logger.error(f"{db_name} quality check error: {e}")
+            # Fallback to Regex if Atlas fails
+            # ✅ FIX: Escaping regex characters to prevent crash on symbols like '(', '+', '*'
+            try:
+                safe_query = re.escape(query) 
+                regex = re.compile(safe_query, re.IGNORECASE)
+                cursor = self.search_col.find({"$or": [{"file_name": regex}, {"caption": regex}]})
+                cursor.sort('$natural', -1)
+                return await cursor.to_list(length=10)
+            except Exception as ex:
+                logger.error(f"Search Error (Fallback Failed): {ex}")
+                return []
 
-    await check_qualities_in_db(MediaPrimary, "Primary DB")
-    await check_qualities_in_db(MediaSecondary, "Secondary DB")
-    await check_qualities_in_db(MediaThird, "Third DB")
-    await check_qualities_in_db(MediaFourth, "Fourth DB")
-                
-    return sorted(list(available_qualities), reverse=True) 
+    async def total_files_count(self):
+        return await self.data_col.count_documents({})
 
-async def get_available_years(query):
-    YEAR_REGEX = re.compile(r'\b(19\d{2}|20\d{2})\b') 
-
-    query = query.strip()
-    if not query:
-        raw_pattern = '.'
-    elif ' ' not in query:
-        raw_pattern = r'(\b|[\.\+\-_])' + query + r'(\b|[\.\+\-_])'
-    else:
-        raw_pattern = query.replace(' ', r'.*[\s\.\+\-_]')
-    
-    try:
-        regex = re.compile(raw_pattern, flags=re.IGNORECASE)
-    except:
-        regex = query
-
-    filter = {
-        '$or': [
-            {'file_name': regex},
-            {'caption': regex}
-        ]
-    }
-    
-    available_years = set()
-
-    async def check_years_in_db(db_class, db_name):
+    async def get_db_size(self):
         try:
-            cursor = db_class.find(filter).limit(200) 
-            async for file in cursor:
-                text_to_check = file.file_name + " " + (file.caption or "")
-                matches = YEAR_REGEX.findall(text_to_check)
-                for year in matches:
-                    available_years.add(year)
-        except Exception as e:
-            logger.error(f"{db_name} year check error: {e}")
+            stats = await self.db.command("dbstats")
+            return stats['dataSize']
+        except:
+            return 0
 
-    await check_years_in_db(MediaPrimary, "Primary DB")
-    await check_years_in_db(MediaSecondary, "Secondary DB")
-    await check_years_in_db(MediaThird, "Third DB")
-    await check_years_in_db(MediaFourth, "Fourth DB")
-                
-    return sorted(list(available_years), reverse=True) 
-
-async def get_bad_files(query, file_type=None, offset=0, filter=False):
-    query = query.strip()
-    if not query:
-        raw_pattern = '.'
-    elif ' ' not in query:
-        raw_pattern = r'(\b|[\.\+\-_])' + query + r'(\b|[\.\+\-_])'
-    else:
-        raw_pattern = query.replace(' ', r'.*[\s\.\+\-_]')
-    try:
-        regex = re.compile(raw_pattern, flags=re.IGNORECASE)
-    except:
-        return [], 0 
-        
-    base_filter = {
-        '$or': [
-            {'file_name': regex},
-            {'caption': regex}
-        ]
-    }
-    
-    filter = {'$and': [base_filter, {'file_type': file_type}]} if file_type else base_filter
-    
-    files = []
-    try:
-        files.extend(await MediaPrimary.find(filter).sort('$natural', -1).to_list(length=None))
-    except Exception as e:
-        logger.error(f"Primary DB bad_files error: {e}")
-        
-    try:
-        files.extend(await MediaSecondary.find(filter).sort('$natural', -1).to_list(length=None))
-    except Exception as e:
-        logger.error(f"Secondary DB bad_files error: {e}")
-        
-    try:
-        files.extend(await MediaThird.find(filter).sort('$natural', -1).to_list(length=None))
-    except Exception as e:
-        logger.error(f"Third DB bad_files error: {e}")
-        
-    try:
-        files.extend(await MediaFourth.find(filter).sort('$natural', -1).to_list(length=None))
-    except Exception as e:
-        logger.error(f"Fourth DB bad_files error: {e}")
-
-    if files:
-        unique_files = {}
-        for file in files:
-            if file.file_id not in unique_files:
-                unique_files[file.file_id] = file
-        files = list(unique_files.values())
-        
-    total_results = len(files)
-    return files, total_results
-    
-async def get_file_details(query):
-    filter = {'file_id': query}
-    
-    try:
-        filedetails = await MediaSecondary.find(filter).to_list(length=1)
-        if filedetails:
-            return filedetails
-    except Exception as e:
-        logger.error(f"get_file_details Secondary DB error: {e}")
-
-    try:
-        filedetails = await MediaPrimary.find(filter).to_list(length=1)
-        if filedetails:
-            return filedetails
-    except Exception as e:
-        logger.error(f"get_file_details Primary DB error: {e}")
-        
-    try:
-        filedetails = await MediaThird.find(filter).to_list(length=1)
-        if filedetails:
-            return filedetails
-    except Exception as e:
-        logger.error(f"get_file_details Third DB error: {e}")
-
-    try:
-        filedetails = await MediaFourth.find(filter).to_list(length=1)
-        if filedetails:
-            return filedetails
-    except Exception as e:
-        logger.error(f"get_file_details Fourth DB error: {e}")
-        
-    return [] 
-
-def encode_file_id(s: bytes) -> str:
-    r = b""
-    n = 0
-    for i in s + bytes([22]) + bytes([4]):
-        if i == 0:
-            n += 1
-        else:
-            if n:
-                r += b"\x00" + bytes([n])
-                n = 0
-            r += bytes([i])
-    return base64.urlsafe_b64encode(r).decode().rstrip("=")
-
-def encode_file_ref(file_ref: bytes) -> str:
-    return base64.urlsafe_b64encode(file_ref).decode().rstrip("=")
-
-def unpack_new_file_id(new_file_id):
-    decoded = FileId.decode(new_file_id)
-    file_id = encode_file_id(
-        pack(
-            "<iiqq",
-            int(decoded.file_type),
-            decoded.dc_id,
-            decoded.media_id,
-            decoded.access_hash
-        )
-    )
-    file_ref = encode_file_ref(decoded.file_reference)
-    return file_id, file_ref
+# Initialize with DATABASE_URI (Primary DB for Files)
+Media = MediaDB(DATABASE_URI, DATABASE_NAME)
